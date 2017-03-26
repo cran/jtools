@@ -2,15 +2,33 @@
 % Please edit documentation in R/j_summary.R
 \name{j_summ}
 \alias{j_summ}
+\alias{j_summ.lm}
+\alias{j_summ.glm}
+\alias{j_summ.svyglm}
 \title{Regression summaries with options}
 \usage{
-j_summ(lm, standardize = FALSE, vifs = FALSE, robust = FALSE,
+j_summ(model, standardize = FALSE, vifs = FALSE, robust = FALSE,
   robust.type = "HC3", digits = 3, model.info = TRUE, model.fit = TRUE,
   model.check = FALSE, n.sd = 1, center = FALSE,
   standardize.response = FALSE)
+
+\method{j_summ}{lm}(model, standardize = FALSE, vifs = FALSE,
+  robust = FALSE, robust.type = "HC3", digits = 3, model.info = TRUE,
+  model.fit = TRUE, model.check = FALSE, n.sd = 1, center = FALSE,
+  standardize.response = FALSE)
+
+\method{j_summ}{glm}(model, standardize = FALSE, vifs = FALSE,
+  robust = FALSE, robust.type = "HC3", digits = 3, model.info = TRUE,
+  model.fit = TRUE, model.check = FALSE, n.sd = 1, center = FALSE,
+  standardize.response = FALSE)
+
+\method{j_summ}{svyglm}(model, standardize = FALSE, vifs = FALSE,
+  robust = FALSE, robust.type = "HC3", digits = 3, model.info = TRUE,
+  model.fit = TRUE, model.check = FALSE, n.sd = 1, center = FALSE,
+  standardize.response = FALSE)
 }
 \arguments{
-\item{lm}{A \code{lm}, \code{glm}, or \code{\link[survey]{svyglm}} object.}
+\item{model}{A \code{lm}, \code{glm}, or \code{\link[survey]{svyglm}} object.}
 
 \item{standardize}{If \code{TRUE}, adds a column to output with standardized regression
 coefficients. Default is \code{FALSE}.}
@@ -116,16 +134,17 @@ By default, this function will print the following items to the console:
 }
 \examples{
 # Create lm object
-fit <- lm(Income ~ Frost + Illiteracy + Murder, data=as.data.frame(state.x77))
+fit <- lm(Income ~ Frost + Illiteracy + Murder, data = as.data.frame(state.x77))
 
 # Print the output with standardized coefficients and 2 digits past the decimal
-j_summ(fit, standardize=TRUE, digits=2)
+j_summ(fit, standardize = TRUE, digits = 2)
 
 # With svyglm
 library(survey)
 data(api)
-dstrat <- svydesign(id=~1,strata=~stype, weights=~pw, data=apistrat, fpc=~fpc)
-regmodel <- svyglm(api00~ell*meals,design=dstrat)
+dstrat <- svydesign(id = ~1, strata =~ stype, weights =~ pw, data = apistrat,
+ fpc =~ fpc)
+regmodel <- svyglm(api00 ~ ell * meals, design = dstrat)
 j_summ(regmodel)
 
 }
