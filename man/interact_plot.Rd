@@ -7,14 +7,15 @@
 interact_plot(model, pred, modx, modxvals = NULL, mod2 = NULL,
   mod2vals = NULL, centered = NULL, standardize = FALSE, n.sd = 1,
   plot.points = FALSE, interval = FALSE, int.type = c("confidence",
-  "prediction"), int.width = 0.95, x.label = NULL, y.label = NULL,
-  modx.labels = NULL, mod2.labels = NULL, main.title = NULL,
-  legend.main = NULL, color.class = NULL, line.thickness = 1.1,
-  vary.lty = TRUE)
+  "prediction"), int.width = 0.95, outcome.scale = "response",
+  x.label = NULL, y.label = NULL, modx.labels = NULL,
+  mod2.labels = NULL, main.title = NULL, legend.main = NULL,
+  color.class = NULL, line.thickness = 1.1, vary.lty = TRUE)
 }
 \arguments{
-\item{model}{A regression model of type \code{lm}, \code{glm}, or
-\code{\link[survey]{svyglm}}. It should contain the interaction of interest.}
+\item{model}{A regression model of type \code{lm}, \code{glm},
+\code{\link[survey]{svyglm}}, or \code{\link[lme4]{merMod}}. It should
+contain the interaction of interest.}
 
 \item{pred}{The name of the predictor variable involved
 in the interaction.}
@@ -51,11 +52,12 @@ non-focal predictors are centered when \code{centered = NULL}, its default.}
 = TRUE}? Default is 1, but some prefer 2.}
 
 \item{plot.points}{Logical. If \code{TRUE}, plots the actual data points as a
-scatterpolot on top of the interaction lines. If moderator is a factor, the dots
+scatterplot on top of the interaction lines. If moderator is a factor, the dots
 will be the same color as their parent factor.}
 
 \item{interval}{Logical. If \code{TRUE}, plots confidence/prediction intervals
-the line using \code{\link[ggplot2]{geom_ribbon}}.}
+the line using \code{\link[ggplot2]{geom_ribbon}}. Not supported for
+\code{merMod} models.}
 
 \item{int.type}{Type of interval to plot. Options are "confidence" or "prediction".
 Default is confidence interval.}
@@ -63,7 +65,14 @@ Default is confidence interval.}
 \item{int.width}{How large should the interval be, relative to the standard error?
 The default, .95, corresponds to roughly 1.96 standard errors and a .05 alpha
 level for values outside the range. In other words, for a confidence interval,
-.95 is analagous to a 95\% confidence interval.}
+.95 is analogous to a 95\% confidence interval.}
+
+\item{outcome.scale}{For nonlinear models (i.e., GLMs), should the outcome
+variable be plotted on the link scale (e.g., log odds for logit models) or
+the original scale (e.g., predicted probabilities for logit models)? The
+default is \code{"response"}, which is the original scale. For the link
+scale, which will show straight lines rather than curves, use
+\code{"link"}.}
 
 \item{x.label}{A character object specifying the desired x-axis label. If \code{NULL},
 the variable name is used.}
@@ -114,8 +123,11 @@ This function provides a means for plotting conditional effects for the
   The function is designed for two-way interactions. For additional terms, the
   \code{\link[effects]{effects}} package may be better suited to the task.
 
-  This function has not been extensively tested with non-linear models and may
-  display unusual behavior and/or errors when used with them.
+  This function supports nonlinear models and by default will plot them on
+  their original scale (\code{outcome.scale = "response"}).
+
+  While mixed effects models from \code{lme4} are supported, only the fixed
+  effects are plotted.
 }
 \examples{
 # Using a fitted lm model
@@ -144,6 +156,15 @@ dstrat <- svydesign(id=~1,strata=~stype, weights=~pw, data=apistrat, fpc=~fpc)
 regmodel <- svyglm(api00~ell*meals,design=dstrat)
 interact_plot(regmodel, pred = ell, modx = meals)
 
+# With lme4
+\dontrun{
+library(lme4)
+data(VerbAgg)
+mv <- glmer(r2 ~ Anger * mode + (1 | item), data = VerbAgg, family = binomial,
+            control = glmerControl("bobyqa"))
+interact_plot(mv, pred = Anger, modx = mode)
+}
+
 }
 \references{
 Bauer, D. J., & Curran, P. J. (2005). Probing interactions in fixed and multilevel
@@ -153,7 +174,7 @@ Bauer, D. J., & Curran, P. J. (2005). Probing interactions in fixed and multilev
 
 Cohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003). \emph{Applied multiple
 regression/correlation analyses for the behavioral sciences} (3rd ed.).
-Mahwah, NJ: Lawerence Erlbaum Associates, Inc.
+Mahwah, NJ: Lawrence Erlbaum Associates, Inc.
 }
 \seealso{
 \code{\link[rockchalk]{plotSlopes}} performs a similar function, but

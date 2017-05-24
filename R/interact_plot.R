@@ -4,8 +4,9 @@
 #' variable to explore interactions. The plotting is done with \code{ggplot2} rather than
 #' base graphics, which some similar functions use.
 #'
-#' @param model A regression model of type \code{lm}, \code{glm}, or
-#' \code{\link[survey]{svyglm}}. It should contain the interaction of interest.
+#' @param model A regression model of type \code{lm}, \code{glm},
+#'   \code{\link[survey]{svyglm}}, or \code{\link[lme4]{merMod}}. It should
+#'   contain the interaction of interest.
 #'
 #' @param pred The name of the predictor variable involved
 #'  in the interaction.
@@ -42,11 +43,12 @@
 #'   = TRUE}? Default is 1, but some prefer 2.
 #'
 #' @param plot.points Logical. If \code{TRUE}, plots the actual data points as a
-#'   scatterpolot on top of the interaction lines. If moderator is a factor, the dots
+#'   scatterplot on top of the interaction lines. If moderator is a factor, the dots
 #'   will be the same color as their parent factor.
 #'
 #' @param interval Logical. If \code{TRUE}, plots confidence/prediction intervals
-#'   the line using \code{\link[ggplot2]{geom_ribbon}}.
+#'   the line using \code{\link[ggplot2]{geom_ribbon}}. Not supported for
+#'   \code{merMod} models.
 #'
 #' @param int.type Type of interval to plot. Options are "confidence" or "prediction".
 #'   Default is confidence interval.
@@ -54,7 +56,14 @@
 #' @param int.width How large should the interval be, relative to the standard error?
 #'   The default, .95, corresponds to roughly 1.96 standard errors and a .05 alpha
 #'   level for values outside the range. In other words, for a confidence interval,
-#'   .95 is analagous to a 95\% confidence interval.
+#'   .95 is analogous to a 95\% confidence interval.
+#'
+#' @param outcome.scale For nonlinear models (i.e., GLMs), should the outcome
+#'   variable be plotted on the link scale (e.g., log odds for logit models) or
+#'   the original scale (e.g., predicted probabilities for logit models)? The
+#'   default is \code{"response"}, which is the original scale. For the link
+#'   scale, which will show straight lines rather than curves, use
+#'   \code{"link"}.
 #'
 #' @param x.label A character object specifying the desired x-axis label. If \code{NULL},
 #'   the variable name is used.
@@ -96,8 +105,11 @@
 #'   The function is designed for two-way interactions. For additional terms, the
 #'   \code{\link[effects]{effects}} package may be better suited to the task.
 #'
-#'   This function has not been extensively tested with non-linear models and may
-#'   display unusual behavior and/or errors when used with them.
+#'   This function supports nonlinear models and by default will plot them on
+#'   their original scale (\code{outcome.scale = "response"}).
+#'
+#'   While mixed effects models from \code{lme4} are supported, only the fixed
+#'   effects are plotted.
 #'
 #' @return The functions returns a \code{ggplot} object, which can be treated like
 #'   a user-created plot and expanded upon as such.
@@ -122,7 +134,7 @@
 #'
 #' Cohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003). \emph{Applied multiple
 #' regression/correlation analyses for the behavioral sciences} (3rd ed.).
-#' Mahwah, NJ: Lawerence Erlbaum Associates, Inc.
+#' Mahwah, NJ: Lawrence Erlbaum Associates, Inc.
 #'
 #' @examples
 #' # Using a fitted lm model
@@ -151,16 +163,27 @@
 #' regmodel <- svyglm(api00~ell*meals,design=dstrat)
 #' interact_plot(regmodel, pred = ell, modx = meals)
 #'
+#' # With lme4
+#' \dontrun{
+#' library(lme4)
+#' data(VerbAgg)
+#' mv <- glmer(r2 ~ Anger * mode + (1 | item), data = VerbAgg, family = binomial,
+#'             control = glmerControl("bobyqa"))
+#' interact_plot(mv, pred = Anger, modx = mode)
+#' }
+#'
 #' @importFrom stats coef coefficients lm predict sd qnorm getCall
 #' @export interact_plot
 
-interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL, mod2vals = NULL,
-                          centered = NULL, standardize = FALSE, n.sd = 1,
-                          plot.points = FALSE, interval = FALSE,
-                          int.type = c("confidence","prediction"), int.width = .95,
+interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
+                          mod2vals = NULL, centered = NULL, standardize = FALSE,
+                          n.sd = 1, plot.points = FALSE, interval = FALSE,
+                          int.type = c("confidence","prediction"),
+                          int.width = .95, outcome.scale = "response",
                           x.label = NULL, y.label = NULL, modx.labels = NULL,
-                          mod2.labels = NULL, main.title = NULL, legend.main = NULL,
-                          color.class = NULL, line.thickness = 1.1, vary.lty = TRUE) {
+                          mod2.labels = NULL, main.title = NULL,
+                          legend.main = NULL, color.class = NULL,
+                          line.thickness = 1.1, vary.lty = TRUE) {
 
   # Evaluate the modx, mod2, pred args
   pred <- as.character(substitute(pred))
@@ -177,11 +200,12 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL, mod2v
   # Is it a svyglm?
   if (class(model)[1] == "svyglm" || class(model)[1] == "svrepglm") {
     survey <- TRUE
+    mixed <- FALSE
     design <- model$survey.design
     d <- design$variables
 
     # Focal vars so the weights don't get centered
-    fvars <- as.character(attributes(model$terms)$variables)
+    fvars <- as.character(attributes(terms(model))$variables)
     # for some reason I can't get rid of the "list" as first element
     fvars <- fvars[2:length(fvars)]
 
@@ -194,8 +218,19 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL, mod2v
 
   } else {
     survey <- FALSE
+    if (class(model)[1] %in% c("glmerMod","lmerMod","nlmerMod")) {
 
-    fvars <- as.character(attributes(model$terms)$variables)
+      mixed <- TRUE
+      if (interval == TRUE) {
+        warning("Confidence intervals cannot be provided for random effects models.")
+        interval <- FALSE
+      }
+
+    } else {
+    mixed <- FALSE
+    }
+
+    fvars <- as.character(attributes(terms(model))$variables)
     # for some reason I can't get rid of the "list" as first element
     fvars <- fvars[2:length(fvars)]
 
@@ -477,7 +512,16 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL, mod2v
     call[[1]] <- survey::svyglm
     modelu <- eval(call)
   }
-  predicted <- as.data.frame(predict(modelu, pm, se.fit=T, interval=int.type[1]))
+  if (mixed == TRUE) {
+    predicted <- as.data.frame(predict(modelu, pm,
+                                       type = outcome.scale,
+                                       allow.new.levels = F,
+                                       re.form = ~0))
+  } else {
+    predicted <- as.data.frame(predict(modelu, pm, se.fit=T,
+                                       interval=int.type[1],
+                                       type = outcome.scale))
+  }
   pm[,resp] <- predicted[,1] # this is the actual values
 
   ## Convert the confidence percentile to a number of S.E. to multiply by
@@ -485,7 +529,9 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL, mod2v
   ses <- qnorm(intw, 0, 1)
 
   # See minimum and maximum values for plotting intervals
-  if (survey == FALSE) {
+  if (mixed == TRUE) {
+    # No SEs
+  } else if (survey == FALSE) {
     pm[,"ymax"] <- pm[,resp] + (predicted[,"se.fit"])*ses
     pm[,"ymin"] <- pm[,resp] - (predicted[,"se.fit"])*ses
   } else if (survey == TRUE) {

@@ -5,6 +5,7 @@
 \alias{j_summ.lm}
 \alias{j_summ.glm}
 \alias{j_summ.svyglm}
+\alias{j_summ.merMod}
 \title{Regression summaries with options}
 \usage{
 j_summ(model, standardize = FALSE, vifs = FALSE, robust = FALSE,
@@ -26,6 +27,11 @@ j_summ(model, standardize = FALSE, vifs = FALSE, robust = FALSE,
   robust = FALSE, robust.type = "HC3", digits = 3, model.info = TRUE,
   model.fit = TRUE, model.check = FALSE, n.sd = 1, center = FALSE,
   standardize.response = FALSE)
+
+\method{j_summ}{merMod}(model, standardize = FALSE, vifs = FALSE,
+  robust = FALSE, robust.type = "HC3", digits = 3, model.info = TRUE,
+  model.fit = FALSE, model.check = FALSE, n.sd = 1, center = FALSE,
+  standardize.response = FALSE)
 }
 \arguments{
 \item{model}{A \code{lm}, \code{glm}, or \code{\link[survey]{svyglm}} object.}
@@ -45,7 +51,7 @@ coefficients. Default is \code{FALSE}.}
   This requires the \code{sandwich} and \code{lmtest} packages to compute the
    standard errors.}
 
-\item{robust.type}{Only used if \code{robust=TRUE}. Specificies the type of
+\item{robust.type}{Only used if \code{robust=TRUE}. Specifies the type of
 robust standard errors to be used by \code{sandwich}. By default, set to \code{"HC3"}
 . See details for more on options.}
 
