@@ -8,14 +8,16 @@ interact_plot(model, pred, modx, modxvals = NULL, mod2 = NULL,
   mod2vals = NULL, centered = NULL, standardize = FALSE, n.sd = 1,
   plot.points = FALSE, interval = FALSE, int.type = c("confidence",
   "prediction"), int.width = 0.95, outcome.scale = "response",
-  x.label = NULL, y.label = NULL, modx.labels = NULL,
-  mod2.labels = NULL, main.title = NULL, legend.main = NULL,
-  color.class = NULL, line.thickness = 1.1, vary.lty = TRUE)
+  set.offset = 1, x.label = NULL, y.label = NULL, pred.labels = NULL,
+  modx.labels = NULL, mod2.labels = NULL, main.title = NULL,
+  legend.main = NULL, color.class = NULL, line.thickness = 1.1,
+  vary.lty = TRUE)
 }
 \arguments{
 \item{model}{A regression model of type \code{lm}, \code{glm},
 \code{\link[survey]{svyglm}}, or \code{\link[lme4]{merMod}}. It should
-contain the interaction of interest.}
+contain the interaction of interest. Models from other classes may work as
+well but are not officially supported.}
 
 \item{pred}{The name of the predictor variable involved
 in the interaction.}
@@ -74,11 +76,20 @@ default is \code{"response"}, which is the original scale. For the link
 scale, which will show straight lines rather than curves, use
 \code{"link"}.}
 
+\item{set.offset}{For models with an offset (e.g., Poisson models), sets a
+offset for the predicted values. All predicted values will have the same
+offset. By default, this is set to 1, which makes the predicted values a
+proportion.}
+
 \item{x.label}{A character object specifying the desired x-axis label. If \code{NULL},
 the variable name is used.}
 
 \item{y.label}{A character object specifying the desired x-axis label. If \code{NULL},
 the variable name is used.}
+
+\item{pred.labels}{A character vector of 2 labels for the predictor if it is
+a 2-level factor or a continuous variable with only 2 values. If \code{NULL},
+the default, the factor labels are used.}
 
 \item{modx.labels}{A character vector of labels for each level of the moderator values,
 provided in the same order as the \code{modxvals} argument. If \code{NULL},
@@ -120,14 +131,17 @@ This function provides a means for plotting conditional effects for the
   purpose of exploring interactions in the context of regression. You must have the
   package \code{ggplot2} installed to benefit from these plotting functions.
 
-  The function is designed for two-way interactions. For additional terms, the
+  The function is designed for two and three-way interactions. For
+   additional terms, the
   \code{\link[effects]{effects}} package may be better suited to the task.
 
-  This function supports nonlinear models and by default will plot them on
+  This function supports nonlinear and generalized linear models and by
+  default will plot them on
   their original scale (\code{outcome.scale = "response"}).
 
   While mixed effects models from \code{lme4} are supported, only the fixed
-  effects are plotted.
+  effects are plotted. \code{lme4} does not provide confidence intervals,
+  so they are not supported with this function either.
 }
 \examples{
 # Using a fitted lm model
@@ -177,8 +191,9 @@ regression/correlation analyses for the behavioral sciences} (3rd ed.).
 Mahwah, NJ: Lawrence Erlbaum Associates, Inc.
 }
 \seealso{
-\code{\link[rockchalk]{plotSlopes}} performs a similar function, but
-  but with the base graphics package--this function is meant, in part, to simulate
+\code{\link[rockchalk]{plotSlopes}} from \pkg{rockchalk} performs a
+  similar function, but
+  with R's base graphics---this function is meant, in part, to emulate
   its features.
 
   \code{\link{sim_slopes}} performs a simple slopes analysis with a similar

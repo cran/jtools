@@ -12,7 +12,7 @@
 
 <meta name="author" content="Jacob Long" />
 
-<meta name="date" content="2017-05-24" />
+<meta name="date" content="2017-08-08" />
 
 <title>j_summ — An alternative to summary for regression models</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore"><code>j_summ</code> — An alternative to <code>summary</code> for regression models</h1>
 <h4 class="author"><em>Jacob Long</em></h4>
-<h4 class="date"><em>2017-05-24</em></h4>
+<h4 class="date"><em>2017-08-08</em></h4>
 
 
 
@@ -82,9 +82,8 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 fit &lt;-<span class="st"> </span><span class="kw">lm</span>(Income ~<span class="st"> </span>Frost +<span class="st"> </span>Illiteracy +<span class="st"> </span>Murder, <span class="dt">data =</span> <span class="kw">as.data.frame</span>(state.x77))
 <span class="kw">j_summ</span>(fit)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4.049, p = 0.012
@@ -118,9 +117,8 @@ fit &lt;-<span class="st"> </span><span class="kw">lm</span>(Income ~<span class
 <p>In both cases, you shouldn’t treat the results as proof of meaningful problems (or a lack of meaningful problems), but instead as a heuristic for more probing with graphical analyses.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">model.check =</span> <span class="ot">TRUE</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4.049, p = 0.012
@@ -145,9 +143,8 @@ fit &lt;-<span class="st"> </span><span class="kw">lm</span>(Income ~<span class
 <p>There are multiple types of robust standard errors that you may use, ranging from “HC0” to “HC5”. Per the recommendation of the authors of the <code>sandwich</code> package, the default is “HC3”. Stata’s default is “HC1”, so you may want to use that if your goal is to replicate Stata analyses.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">robust =</span> <span class="ot">TRUE</span>, <span class="dt">robust.type =</span> <span class="st">&quot;HC3&quot;</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4.049, p = 0.012
@@ -170,9 +167,8 @@ fit &lt;-<span class="st"> </span><span class="kw">lm</span>(Income ~<span class
 <p>The default argument is <code>digits = 3</code>.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">digits=</span><span class="dv">5</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4.04857, p = 0.01232
@@ -187,9 +183,8 @@ fit &lt;-<span class="st"> </span><span class="kw">lm</span>(Income ~<span class
 ## Murder      23.07403   30.94034  0.74576  0.45961</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">digits=</span><span class="dv">1</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4, p = 0
@@ -218,9 +213,8 @@ j$coeftable</code></pre></div>
 <p>Note that the <code>car</code> package is needed to calculate VIFs.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">vifs =</span> <span class="ot">TRUE</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4.049, p = 0.012
@@ -240,9 +234,8 @@ j$coeftable</code></pre></div>
 <p>Some prefer to use standardized coefficients in order to avoid dismissing an effect as “small” when it is just the units of measure that are small. Standardized betas are used instead when <code>standardized = TRUE</code>. To be clear, since the meaning of “standardized beta” can vary depending on who you talk to, this option mean-centers the variables too.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">standardize =</span> <span class="ot">TRUE</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4.049, p = 0.012
@@ -260,9 +253,8 @@ j$coeftable</code></pre></div>
 <p>You can also choose a different number of standard deviations to divide by for standardization. Andrew Gelman has been a proponent of dividing by 2 standard deviations; if you want to do things that way, give the argument <code>n.sd = 2</code>.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">standardize =</span> <span class="ot">TRUE</span>, <span class="dt">n.sd =</span> <span class="dv">2</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4.049, p = 0.012
@@ -284,9 +276,8 @@ j$coeftable</code></pre></div>
 <p>In the same vein as the standardization feature, you can keep the original scale while still mean-centering the predictors with the <code>center = TRUE</code> argument.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">center =</span> <span class="ot">TRUE</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
-## Sample Size: 50
+## Observations: 50
 ## Dependent Variable: Income
-## Number of Terms: 3
 ## 
 ## MODEL FIT: 
 ## F(3,46) = 4.049, p = 0.012

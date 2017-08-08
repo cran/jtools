@@ -6,7 +6,8 @@
 #'
 #' @param model A regression model of type \code{lm}, \code{glm},
 #'   \code{\link[survey]{svyglm}}, or \code{\link[lme4]{merMod}}. It should
-#'   contain the interaction of interest.
+#'   contain the interaction of interest. Models from other classes may work as
+#'   well but are not officially supported.
 #'
 #' @param pred The name of the predictor variable involved
 #'  in the interaction.
@@ -65,11 +66,20 @@
 #'   scale, which will show straight lines rather than curves, use
 #'   \code{"link"}.
 #'
+#' @param set.offset For models with an offset (e.g., Poisson models), sets a
+#'   offset for the predicted values. All predicted values will have the same
+#'   offset. By default, this is set to 1, which makes the predicted values a
+#'   proportion.
+#'
 #' @param x.label A character object specifying the desired x-axis label. If \code{NULL},
 #'   the variable name is used.
 #'
 #' @param y.label A character object specifying the desired x-axis label. If \code{NULL},
 #'   the variable name is used.
+#'
+#' @param pred.labels A character vector of 2 labels for the predictor if it is
+#'   a 2-level factor or a continuous variable with only 2 values. If \code{NULL},
+#'   the default, the factor labels are used.
 #'
 #' @param modx.labels A character vector of labels for each level of the moderator values,
 #'   provided in the same order as the \code{modxvals} argument. If \code{NULL},
@@ -102,14 +112,17 @@
 #'   purpose of exploring interactions in the context of regression. You must have the
 #'   package \code{ggplot2} installed to benefit from these plotting functions.
 #'
-#'   The function is designed for two-way interactions. For additional terms, the
+#'   The function is designed for two and three-way interactions. For
+#'    additional terms, the
 #'   \code{\link[effects]{effects}} package may be better suited to the task.
 #'
-#'   This function supports nonlinear models and by default will plot them on
+#'   This function supports nonlinear and generalized linear models and by
+#'   default will plot them on
 #'   their original scale (\code{outcome.scale = "response"}).
 #'
 #'   While mixed effects models from \code{lme4} are supported, only the fixed
-#'   effects are plotted.
+#'   effects are plotted. \code{lme4} does not provide confidence intervals,
+#'   so they are not supported with this function either.
 #'
 #' @return The functions returns a \code{ggplot} object, which can be treated like
 #'   a user-created plot and expanded upon as such.
@@ -118,8 +131,9 @@
 #'
 #' @family interaction tools
 #'
-#' @seealso \code{\link[rockchalk]{plotSlopes}} performs a similar function, but
-#'   but with the base graphics package--this function is meant, in part, to simulate
+#' @seealso \code{\link[rockchalk]{plotSlopes}} from \pkg{rockchalk} performs a
+#'   similar function, but
+#'   with R's base graphics---this function is meant, in part, to emulate
 #'   its features.
 #'
 #'   \code{\link{sim_slopes}} performs a simple slopes analysis with a similar
@@ -172,7 +186,8 @@
 #' interact_plot(mv, pred = Anger, modx = mode)
 #' }
 #'
-#' @importFrom stats coef coefficients lm predict sd qnorm getCall
+#' @importFrom stats coef coefficients lm predict sd qnorm getCall model.offset
+#' @importFrom stats median
 #' @export interact_plot
 
 interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
@@ -180,7 +195,9 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
                           n.sd = 1, plot.points = FALSE, interval = FALSE,
                           int.type = c("confidence","prediction"),
                           int.width = .95, outcome.scale = "response",
-                          x.label = NULL, y.label = NULL, modx.labels = NULL,
+                          set.offset = 1,
+                          x.label = NULL, y.label = NULL,
+                          pred.labels = NULL, modx.labels = NULL,
                           mod2.labels = NULL, main.title = NULL,
                           legend.main = NULL, color.class = NULL,
                           line.thickness = 1.1, vary.lty = TRUE) {
@@ -211,7 +228,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
     facvars <- c()
     for (v in fvars) {
-      if (is.factor((d[,v]))) {
+      if (is.factor((d[,v])) && length(unique(d[,v])) > 2) {
         facvars <- c(facvars, v)
       }
     }
@@ -236,7 +253,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
     facvars <- c()
     for (v in fvars) {
-      if (is.factor((d[,v]))) {
+      if (is.factor((d[,v])) && length(unique(d[,v])) > 2) {
         facvars <- c(facvars, v)
       }
     }
@@ -251,6 +268,15 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   } else {
     weights <- FALSE
     wname <- NULL
+  }
+
+  # offset?
+  if (!is.null(model.offset(model.frame(model)))) {
+    off <- TRUE
+    offname <- as.character(model$call$offset[-1])
+  } else {
+    off <- FALSE
+    offname <- NULL
   }
 
   # Setting default for colors
@@ -283,7 +309,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   resp <- trimws(resp)
 
   # Update facvars by pulling out all non-focals
-  facvars <- facvars[!(facvars %in% c(pred, resp, modx, mod2, wname))]
+  facvars <- facvars[!(facvars %in% c(pred, resp, modx, mod2, wname, "(offset)"))]
 
   # Handling user-requested centered vars
   if (!is.null(centered) && centered != "all" && centered != "none") {
@@ -302,7 +328,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     }
   } else if (!is.null(centered) && centered == "all") {
     # Need to handle surveys differently within this condition
-    vars <- names(d)[!(names(d) %in% c(resp, wname))] # saving all vars expect response
+    vars <- names(d)[!(names(d) %in% c(resp, wname, "(offset)"))] # saving all vars expect response
     if (survey == FALSE) {
       if (weights == FALSE) {
         d <- gscale(x = vars, data = d, center.only = !standardize,
@@ -314,7 +340,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     } else {
       # Need a different strategy for not iterating over unimportant vars for
       # survey designs
-      ndfvars <- fvars[!(fvars %in% c(resp, wname))]
+      ndfvars <- fvars[!(fvars %in% c(resp, wname, "(offset)"))]
       if (length(ndfvars) > 0) {
         design <- gscale(x = ndfvars, data = design, center.only = !standardize,
                          n.sd = n.sd)
@@ -325,7 +351,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
   } else { # Center all non-focal
     # Centering the non-focal variables to make the slopes more interpretable
-    vars <- names(d)[!(names(d) %in% c(pred, resp, modx, mod2, wname))]
+    vars <- names(d)[!(names(d) %in% c(pred, resp, modx, mod2, wname, "(offset)"))]
     # Need to handle surveys differently within this condition
     if (survey == FALSE) {
       if (weights == FALSE) {
@@ -338,7 +364,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     } else {
       # Need a different strategy for not iterating over unimportant vars for
       # survey designs
-      nfvars <- fvars[!(fvars %in% c(pred, resp, modx, mod2, wname))]
+      nfvars <- fvars[!(fvars %in% c(pred, resp, modx, mod2, wname, "(offset)"))]
       if (length(nfvars) > 0) {
         design <- gscale(x = nfvars, data = design, center.only = !standardize,
                          n.sd = n.sd)
@@ -353,75 +379,168 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   # Default to +/- 1 SD unless modx is factor
   if (is.null(modxvals) && !is.factor(d[,modx]) &&
       length(unique(d[,modx])) > 2) {
+
     if (survey == FALSE) {
-      modsd <- sd(d[,modx])
-      modxvalssd <- c(mean(d[,modx])+modsd, mean(d[,modx]), mean(d[,modx])-modsd)
-      names(modxvalssd) <- c("+1 SD", "Mean", "-1 SD")
-      modxvals2 <- modxvalssd
+
+      if (weights == FALSE) { # can have weights w/o svyglm
+
+        modsd <- sd(d[,modx]) # save the SD
+        # Now save a vector of those focal values
+        modxvalssd <- c(mean(d[,modx]) + modsd,
+                        mean(d[,modx]),
+                        mean(d[,modx]) - modsd)
+        # Name the vector for better labeling of the plot
+        names(modxvalssd) <- c("+1 SD", "Mean", "-1 SD")
+
+      } else { # Same thing, but with weights
+
+        modsd <- wtd.sd(d[,modx], d[,wname])
+        modxvalssd <- c(weighted.mean(d[,modx], d[,wname]) + modsd,
+                        weighted.mean(d[,modx], d[,wname]),
+                        weighted.mean(d[,modx], d[,wname]) - modsd)
+        names(modxvalssd) <- c("+1 SD", "Mean", "-1 SD")
+
+      }
+
+      modxvals2 <- modxvalssd # Saving the values to a new object for use later
+
     } else if (survey == TRUE) {
+
       modsd <- svysd(as.formula(paste("~", modx, sep = "")), design = design)
-      modmean <- survey::svymean(as.formula(paste("~", modx, sep = "")), design = design)
-      modxvalssd <- c(modmean+modsd, modmean, modmean-modsd)
+      # Have to construct the formula this way since the syntax for svymean
+      # differs from mean
+      modmean <- survey::svymean(as.formula(paste("~", modx, sep = "")),
+                                 design = design)
+      modxvalssd <- c(modmean + modsd,
+                      modmean,
+                      modmean - modsd)
       names(modxvalssd) <- c("+1 SD", "Mean", "-1 SD")
+
       modxvals2 <- modxvalssd
+
     }
+
   } else if (!is.factor(d[,modx]) && class(modxvals) == "character" &&
-                        modxvals == "plus-minus") {
+                        modxvals == "plus-minus") { # No mean
+
     if (survey == FALSE) {
-      modsd <- sd(d[,modx])
-      modxvalssd <- c(mean(d[,modx])+modsd, mean(d[,modx])-modsd)
-      names(modxvalssd) <- c("+1 SD", "-1 SD")
-      modxvals2 <- modxvalssd
+
+      if (weights == FALSE) {
+
+        modsd <- sd(d[,modx])
+        modxvalssd <- c(mean(d[,modx]) + modsd,
+                        mean(d[,modx]) - modsd)
+        names(modxvalssd) <- c("+1 SD", "-1 SD")
+        modxvals2 <- modxvalssd
+
+      } else {
+
+        modsd <- wtd.sd(d[,modx], d[,wname])
+        modxvalssd <- c(weighted.mean(d[,modx], d[,wname]) + modsd,
+                        weighted.mean(d[,modx], d[,wname]) - modsd)
+        names(modxvalssd) <- c("+1 SD", "-1 SD")
+        modxvals2 <- modxvalssd
+
+      }
+
     } else if (survey == TRUE) {
+
       modsd <- svysd(as.formula(paste("~", modx, sep = "")), design = design)
       modmean <- survey::svymean(as.formula(paste("~", modx, sep = "")), design = design)
       modxvalssd <- c(modmean+modsd, modmean-modsd)
       names(modxvalssd) <- c("+1 SD", "-1 SD")
       modxvals2 <- modxvalssd
+
     }
+
   } else if (is.null(modxvals) && !is.factor(d[,modx]) &&
              length(unique(d[,modx])) == 2) {
+
     modxvals2 <- as.numeric(levels(factor(d[,modx])))
+
   } else if (is.null(modxvals) && is.factor(d[,modx])){
+
     modxvals2 <- levels(d[,modx])
+
   } else { # Use user-supplied values otherwise
+
     modxvals2 <- sort(modxvals, decreasing = T)
+
   }
-
-
 
   # Same process for second moderator
   if (!is.null(mod2)) {
+
     if (is.null(mod2vals) && !is.factor(d[,mod2]) &&
         length(unique(d[,mod2])) > 2) {
+
       if (survey == FALSE) {
-        mod2sd <- sd(d[,mod2])
-        mod2valssd <- c(mean(d[,mod2])+mod2sd, mean(d[,mod2]), mean(d[,mod2])-mod2sd)
-        names(mod2valssd) <- c(paste("Mean of", mod2, "+1 SD"),
-                               paste("Mean of", mod2),
-                               paste("Mean of", mod2, "-1 SD"))
+
+        if (weights == FALSE) {
+          mod2sd <- sd(d[,mod2])
+          mod2valssd <- c(mean(d[,mod2]) + mod2sd,
+                          mean(d[,mod2]),
+                          mean(d[,mod2]) - mod2sd)
+          names(mod2valssd) <- c(paste("Mean of", mod2, "+1 SD"),
+                                 paste("Mean of", mod2),
+                                 paste("Mean of", mod2, "-1 SD"))
+
+        } else {
+
+          mod2sd <- wtd.sd(d[,mod2], d[,wname])
+          mod2valssd <- c(weighted.mean(d[,mod2], d[,wname]) + mod2sd,
+                          weighted.mean(d[,mod2], d[,wname]),
+                          weighted.mean(d[,mod2], d[,wname]) - mod2sd)
+          names(mod2valssd) <- c(paste("Mean of", mod2, "+1 SD"),
+                                 paste("Mean of", mod2),
+                                 paste("Mean of", mod2, "-1 SD"))
+
+        }
+
         mod2vals2 <- mod2valssd
         mod2vals2 <- sort(mod2vals2, decreasing = F)
+
       } else if (survey == TRUE) {
+
         mod2sd <- svysd(as.formula(paste("~", mod2, sep = "")), design = design)
         mod2mean <- survey::svymean(as.formula(paste("~", mod2, sep = "")), design = design)
-        mod2valssd <- c(mod2mean+mod2sd, mod2mean, mod2mean-mod2sd)
+        mod2valssd <- c(mod2mean + mod2sd, mod2mean, mod2mean - mod2sd)
         names(mod2valssd) <- c(paste("Mean of", mod2, "+1 SD"),
                                paste("Mean of", mod2),
                                paste("Mean of", mod2, "-1 SD"))
         mod2vals2 <- mod2valssd
         mod2vals2 <- sort(mod2vals2, decreasing = F)
+
       }
+
     } else if (!is.factor(d[,mod2]) && class(mod2vals) == "character" &&
                mod2vals == "plus-minus") {
+
       if (survey == FALSE) {
-        mod2sd <- sd(d[,mod2])
-        mod2valssd <- c(mean(d[,mod2])+mod2sd, mean(d[,mod2])-mod2sd)
-        names(mod2valssd) <- c(paste("Mean of", mod2, "+1 SD"),
-                               paste("Mean of", mod2, "-1 SD"))
-        mod2vals2 <- mod2valssd
-        mod2vals2 <- sort(mod2vals2, decreasing = F)
+
+        if (weights == FALSE) {
+
+          mod2sd <- sd(d[,mod2])
+          mod2valssd <- c(mean(d[,mod2]) + mod2sd,
+                          mean(d[,mod2]) - mod2sd)
+          names(mod2valssd) <- c(paste("Mean of", mod2, "+1 SD"),
+                                 paste("Mean of", mod2, "-1 SD"))
+
+        } else {
+
+          mod2sd <- wtd.sd(d[,mod2])
+          mod2valssd <- c(weighted.mean(d[,mod2], d[,wname]) + mod2sd,
+                          weighted.mean(d[,mod2], d[,wname]) - mod2sd)
+          names(mod2valssd) <- c(paste("Mean of", mod2, "+1 SD"),
+                                 paste("Mean of", mod2, "-1 SD"))
+
+        }
+
+          mod2vals2 <- mod2valssd
+          mod2vals2 <- sort(mod2vals2, decreasing = F)
+
       } else if (survey == TRUE) {
+
         mod2sd <- svysd(as.formula(paste("~", mod2, sep = "")), design = design)
         mod2mean <- survey::svymean(as.formula(paste("~", mod2, sep = "")), design = design)
         mod2valssd <- c(mod2mean+mod2sd, mod2mean-mod2sd)
@@ -429,15 +548,40 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
                                paste("Mean of", mod2, "-1 SD"))
         mod2vals2 <- mod2valssd
         mod2vals2 <- sort(mod2vals2, decreasing = F)
+
       }
+
     } else if (is.null(mod2vals) && !is.factor(d[,mod2]) &&
                length(unique(d[,mod2])) == 2) {
+
       mod2vals2 <- as.numeric(levels(factor(d[,mod2])))
-    } else if (is.null(mod2vals) && is.factor(d[,mod2])){
+
+    } else if (is.null(mod2vals) && is.factor(d[,mod2])) {
+
       mod2vals2 <- levels(d[,mod2])
+
     } else { # Use user-supplied values otherwise
+
       mod2vals2 <- sort(mod2vals, decreasing = F)
+
     }
+
+  }
+
+  # Support for factor input for pred term, but only if it has two levels
+  if (is.factor(d[,pred]) & length(unique(d[,pred] == 2))) {
+    # Getting the labels from the factor
+    predlabs <- levels(d[,pred])
+    # Now convert it to a numeric variable, subtracting 1 to make it 0/1 rather
+    # than 1/2
+    d[,pred] <- as.numeric(d[,pred]) - 1
+    # Set this indicator so it is treated properly later
+    predfac <- TRUE
+  } else if (is.factor(d[,pred]) & length(unique(d[,pred] != 2))) {
+    # I could assume the factor is properly ordered, but that's too risky
+    stop("Focal predictor (\"pred\") cannot have more than two levels. Either use it as modx or convert it to a continuous or single dummy variable.")
+  } else {
+    predfac <- FALSE
   }
 
 
@@ -476,14 +620,33 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   }
 
   # Creating matrix for use in predict()
-  if (is.null(mod2)) {
-    pm <- matrix(rep(0, 100*(nc+2)*length(modxvals2)), ncol=(nc+2))
+  if (interval == TRUE) { # Only create SE columns if intervals needed
+    if (is.null(mod2)) {
+      pm <- matrix(rep(0, 100*(nc+2)*length(modxvals2)), ncol=(nc+2))
+    } else {
+      pm <- matrix(rep(0, (nc+2)*length(facs)), ncol=(nc+2))
+    }
   } else {
-    pm <- matrix(rep(0, (nc+2)*length(facs)), ncol=(nc+2))
+    if (is.null(mod2)) {
+      pm <- matrix(rep(0, 100*(nc)*length(modxvals2)), ncol=(nc))
+    } else {
+      pm <- matrix(rep(0, (nc)*length(facs)), ncol=(nc))
+    }
+  }
+
+  # Change name of offset column to its original
+  if (off == TRUE) {
+    # Avoiding the variable not found stuff
+    colnames(d)[colnames(d) %in% "(offset)"] <- offname
+    d[,offname] <- exp(d[,offname])
   }
 
   # Naming columns
-  colnames(pm) <- c(colnames(d),"ymax","ymin")
+  if (interval == TRUE) { # if intervals, name the SE columns
+    colnames(pm) <- c(colnames(d),"ymax","ymin")
+  } else {
+    colnames(pm) <- colnames(d)
+  }
   # Convert to dataframe
   pm <- as.data.frame(pm)
   # Add values of moderator to df
@@ -502,16 +665,48 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     }
   }
 
-  # Create predicted values based on specified levels of the moderator, focal predictor
-  if (survey == FALSE) {
-    modelu <- update(model, data = d)
-  } else {
-    # Have to do all this to avoid adding survey to dependencies
-    call <- getCall(model)
-    call$design <- design
-    call[[1]] <- survey::svyglm
-    modelu <- eval(call)
+  if (off == TRUE) {
+    if (is.null(set.offset)) {
+      offset.num <- median(d[,offname])
+    } else {
+      offset.num <- set.offset
+    }
+
+    pm[,offname] <- offset.num
+    msg <- paste("Count is based on a total of", offset.num, "exposures")
+    message(msg)
   }
+
+  # Create predicted values based on specified levels of the moderator, focal predictor
+
+  ## Don't update model if no vars were centered
+  if (!is.null(centered) && centered == "none") {
+    modelu <- model
+  } else {
+    if (survey == FALSE) {
+      if (mixed == FALSE) {
+        modelu <- update(model, data = d)
+      } else {
+        optimiz <- model@optinfo$optimizer
+        if (class(model) == "glmerMod") {
+          modelu <- update(model, data = d,
+                           control = lme4::glmerControl(optimizer = optimiz,
+                                                        calc.derivs = FALSE))
+        } else {
+          modelu <- update(model, data = d,
+                           control = lme4::lmerControl(optimizer = optimiz,
+                                                        calc.derivs = FALSE))
+        }
+      }
+    } else {
+      # Have to do all this to avoid adding survey to dependencies
+      call <- getCall(model)
+      call$design <- design
+      call[[1]] <- survey::svyglm
+      modelu <- eval(call)
+    }
+  }
+
   if (mixed == TRUE) {
     predicted <- as.data.frame(predict(modelu, pm,
                                        type = outcome.scale,
@@ -529,14 +724,19 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   ses <- qnorm(intw, 0, 1)
 
   # See minimum and maximum values for plotting intervals
-  if (mixed == TRUE) {
-    # No SEs
-  } else if (survey == FALSE) {
-    pm[,"ymax"] <- pm[,resp] + (predicted[,"se.fit"])*ses
-    pm[,"ymin"] <- pm[,resp] - (predicted[,"se.fit"])*ses
-  } else if (survey == TRUE) {
-    pm[,"ymax"] <- pm[,resp] + (predicted[,"SE"])*ses
-    pm[,"ymin"] <- pm[,resp] - (predicted[,"SE"])*ses
+  if (interval == TRUE) { # only create SE columns if intervals are needed
+    if (mixed == TRUE) {
+      # No SEs
+      warning("Standard errors cannot be calculated for mixed effect models.")
+    } else if (survey == FALSE) {
+      pm[,"ymax"] <- pm[,resp] + (predicted[,"se.fit"])*ses
+      pm[,"ymin"] <- pm[,resp] - (predicted[,"se.fit"])*ses
+    } else if (survey == TRUE) {
+      pm[,"ymax"] <- pm[,resp] + (predicted[,"SE"])*ses
+      pm[,"ymin"] <- pm[,resp] - (predicted[,"SE"])*ses
+    }
+  } else {
+    # Do nothing
   }
 
   # For plotting, it's good to have moderator as factor...
@@ -566,9 +766,15 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
       labs <- as.character(modxvals2)
       names(modxvals2) <- labs
       pm[,modx] <- factor(pm[,modx], labels = names(sort(modxvals2, decreasing = F)))
+    } else if (is.factor(d[,modx])) {
+      pm[,modx] <- factor(pm[,modx], levels = modxvals2)
     }
-  } else if (length(modx.labels)==length(modxvals2)) {
-    pm[,modx] <- factor(pm[,modx], labels=modx.labels)
+  } else if (length(modx.labels) == length(modxvals2)) {
+    if (!is.factor(d[,modx])) {
+      pm[,modx] <- factor(pm[,modx], labels = modx.labels)
+    } else if (is.factor(d[,modx])) {
+      pm[,modx] <- factor(pm[,modx], levels = modxvals2, labels = modx.labels)
+    }
   } else {warning("modx.labels argument was not the same length as modxvals. Ignoring...")}
 
 
@@ -583,9 +789,15 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
         labs <- as.character(mod2vals2)
         names(mod2vals2) <- labs
         pm[,mod2] <- factor(pm[,mod2], labels = names(sort(mod2vals2, decreasing = F)))
+      } else if (is.factor(d[,mod2])) {
+        pm[,mod2] <- factor(pm[,mod2], levels = mod2vals2)
       }
-    } else if (length(mod2.labels)==length(mod2vals2)) {
-      pm[,mod2] <- factor(pm[,mod2], labels=mod2.labels)
+    } else if (length(mod2.labels) == length(mod2vals2)) {
+      if (!is.factor(d[,mod2])) {
+        pm[,mod2] <- factor(pm[,mod2], labels = mod2.labels)
+      } else if (is.factor(d[,mod2])) {
+        pm[,mod2] <- factor(pm[,mod2], levels = mod2vals2, labels = mod2.labels)
+      }
     } else {warning("mod2.labels argument was not the same length as modxvals. Ignoring...")}
   }
 
@@ -649,6 +861,28 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   }
   p <- p + ggplot2::labs(x = x.label, y = y.label) # better labels for axes
 
+  # Getting rid of tick marks for factor predictor
+  if (predfac == TRUE) {
+    if (is.null(pred.labels)) { # Let pred.labels override factor labels
+      p <- p + ggplot2::scale_x_continuous(breaks = c(0,1), labels = predlabs)
+    } else { # Use the factor labels
+      p <- p + ggplot2::scale_x_continuous(breaks = c(0,1), labels = pred.labels)
+    }
+  } else if (length(unique(d[,pred])) == 2) { # Predictor has only two unique values
+    # Make sure those values are in increasing order
+    brks <- sort(unique(d[,pred]), decreasing = F)
+    if (is.null(pred.labels)) {
+      p <- p + ggplot2::scale_x_continuous(breaks = brks)
+    } else {
+      if (length(pred.labels) == 2) { # Make sure pred.labels has right length
+        p <- p + ggplot2::scale_x_continuous(breaks = brks, labels = pred.labels)
+      } else {
+        warning("pred.labels argument has the wrong length. It won't be used")
+        p <- p + ggplot2::scale_x_continuous(breaks = brks)
+      }
+    }
+  }
+
   # Get scale colors, provide better legend title
   if (facmod == TRUE) {
     p <- p + ggplot2::scale_colour_brewer(name = legend.main, palette = color.class)
@@ -666,10 +900,12 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     p <- p + ggplot2::theme(legend.key.width = grid::unit(2, "lines"))
   }
 
+  # Give the plot the user-specified title if there is one
   if (!is.null(main.title)){
     p <- p + ggplot2::ggtitle(main.title)
   }
 
+  # Return the plot
   return(p)
 
 }
