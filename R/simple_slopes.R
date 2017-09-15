@@ -57,8 +57,10 @@
 #'   if \code{robust=TRUE}. See details of \code{\link{j_summ}} for more on
 #'    options.
 #'
-#' @param digits How many significant digits after the decimal point should the
-#'   output contain?
+#' @param digits An integer specifying the number of digits past the decimal to
+#'   report in the output. Default is 3. You can change the default number of
+#'   digits for all jtools functions with
+#'   \code{options("jtools-digits" = digits)} where digits is the desired number.
 #'
 #' @param n.sd How many standard deviations should be used if \code{standardize
 #'   = TRUE}? Default is 1, but some prefer 2.
@@ -145,7 +147,8 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modxvals = NULL,
                        mod2vals = NULL, centered = NULL, standardize = FALSE,
                        cond.int = FALSE, johnson_neyman = TRUE, jnplot = FALSE,
                        jnalpha = .05, robust = FALSE, robust.type = "HC3",
-                       digits = 3, n.sd = 1) {
+                       digits = getOption("jtools-digits", default = 3),
+                       n.sd = 1) {
 
   # Allows unquoted variable names
   pred <- as.character(substitute(pred))
@@ -211,10 +214,13 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modxvals = NULL,
                   cond.int = cond.int)
 
   # weights?
-  if (survey == FALSE && "(weights)" %in% names(d)) {
+  if (survey == FALSE && ("(weights)" %in% names(d) |
+                          !is.null(model$call$weights))) {
     weights <- TRUE
     wname <- as.character(model$call["weights"])
-    colnames(d)[which(colnames(d) == "(weights)")] <- wname
+    if (any(colnames(d) == "(weights)")) {
+      colnames(d)[which(colnames(d) == "(weights)")] <- wname
+    }
   } else {
     weights <- FALSE
     wname <- NULL
@@ -638,7 +644,8 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modxvals = NULL,
       if (robust==TRUE) {
 
         # Use j_summ to get the coefficients
-        sum <- jtools::j_summ(newmod, robust = T, robust.type = robust.type)
+        sum <- jtools::j_summ(newmod, robust = T, robust.type = robust.type,
+                              model.fit = F)
         summat <- sum$coeftable
 
         slopep <- summat[pred,c("Est.","S.E.","p")]
@@ -652,7 +659,7 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modxvals = NULL,
 
       } else {
 
-        sum <- jtools::j_summ(newmod)
+        sum <- jtools::j_summ(newmod, model.fit = F)
         summat <- sum$coeftable
 
         slopep <- summat[pred,c("Est.","S.E.","p")]
@@ -695,7 +702,7 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modxvals = NULL,
       newmod <- eval(call)
 
       # Get the coefs
-      sum <- j_summ(newmod)
+      sum <- j_summ(newmod, model.fit = F)
       summat <- sum$coeftable
 
       slopep <- summat[pred,c("Est.","S.E.","p")]

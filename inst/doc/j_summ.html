@@ -12,7 +12,7 @@
 
 <meta name="author" content="Jacob Long" />
 
-<meta name="date" content="2017-08-08" />
+<meta name="date" content="2017-09-15" />
 
 <title>j_summ — An alternative to summary for regression models</title>
 
@@ -68,18 +68,18 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 
 
-<h1 class="title toc-ignore"><code>j_summ</code> — An alternative to <code>summary</code> for regression models</h1>
+<h1 class="title toc-ignore">j_summ — An alternative to summary for regression models</h1>
 <h4 class="author"><em>Jacob Long</em></h4>
-<h4 class="date"><em>2017-08-08</em></h4>
+<h4 class="date"><em>2017-09-15</em></h4>
 
 
 
 <div id="section" class="section level2">
 <h2></h2>
-<p>When sharing analyses with colleagues unfamiliar with R, I found that the output generally was not clear to them. Even worse, if I wanted to give them information that is not included in the output like VIFs, robust standard errors, or standardized coefficients. After creating output tables “by hand” on multiple occasions, I thought it best to pack things into a reusable function.</p>
+<p>When sharing analyses with colleagues unfamiliar with R, I found that the output generally was not clear to them. Things were even worse if I wanted to give them information that is not included in the output like VIFs, robust standard errors, or standardized coefficients since the functions for estimating these don’t append them to a typical regression table. After creating output tables “by hand” on multiple occasions, I thought it best to pack things into a reusable function.</p>
 <p>With no user-specified arguments except a fitted model, the output of <code>j_summ()</code> looks like this:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Fit model</span>
-fit &lt;-<span class="st"> </span><span class="kw">lm</span>(Income ~<span class="st"> </span>Frost +<span class="st"> </span>Illiteracy +<span class="st"> </span>Murder, <span class="dt">data =</span> <span class="kw">as.data.frame</span>(state.x77))
+fit &lt;-<span class="st"> </span><span class="kw">lm</span>(Income <span class="op">~</span><span class="st"> </span>Frost <span class="op">+</span><span class="st"> </span>Illiteracy <span class="op">+</span><span class="st"> </span>Murder, <span class="dt">data =</span> <span class="kw">as.data.frame</span>(state.x77))
 <span class="kw">j_summ</span>(fit)</code></pre></div>
 <pre><code>## MODEL INFO:
 ## Observations: 50
@@ -157,81 +157,12 @@ fit &lt;-<span class="st"> </span><span class="kw">lm</span>(Income ~<span class
 ## Frost       -1.254   2.867   -0.437 0.664    
 ## Illiteracy  -610.715 196.879 -3.102 0.003 ** 
 ## Murder      23.074   36.846  0.626  0.534</code></pre>
-<p>Robust standard errors will not be calculated for non-linear models (from <code>glm</code>) and <code>svyglm</code> models. In the case of <code>svyglm</code>, the standard errors that package calculates are already robust to heteroskedasticity, so a <code>robust = TRUE</code> parameter will be ignored.</p>
+<p>Robust standard errors can also be calculated for generalized linear models (i.e., <code>glm</code> objects) though some debate whether they should be used for models fit iteratively with non-normal errors. In the case of <code>svyglm</code>, the standard errors that package calculates are already robust to heteroskedasticity, so a <code>robust = TRUE</code> parameter will be ignored with a warning.</p>
+<p>You may also specify with <code>cluster</code> argument the name of a variable in the input data or a vector of clusters to get cluster-robust standard errors.</p>
 </div>
-<div id="other-options" class="section level2">
-<h2>Other options</h2>
-<div id="choose-how-many-digits-past-the-decimal-to-round-to" class="section level3">
-<h3>Choose how many digits past the decimal to round to</h3>
-<p>With the <code>digits =</code> argument, you can decide how precise you want the outputted numbers to be. It is often inappropriate or distracting to report quantities with many digits past the decimal due to the inability to measure them so precisely or interpret them in applied settings. In other cases, it may be necessary to use more digits due to the way measures are calculated.</p>
-<p>The default argument is <code>digits = 3</code>.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">digits=</span><span class="dv">5</span>)</code></pre></div>
-<pre><code>## MODEL INFO:
-## Observations: 50
-## Dependent Variable: Income
-## 
-## MODEL FIT: 
-## F(3,46) = 4.04857, p = 0.01232
-## R-squared = 0.20888
-## Adj. R-squared = 0.15729
-## 
-## Standard errors: OLS 
-##             Est.       S.E.      t val.   p          
-## (Intercept) 5111.09665 416.57608 12.2693  0       ***
-## Frost       -1.25407   2.11012   -0.59432 0.55521    
-## Illiteracy  -610.71471 213.13769 -2.86535 0.00626 ** 
-## Murder      23.07403   30.94034  0.74576  0.45961</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">digits=</span><span class="dv">1</span>)</code></pre></div>
-<pre><code>## MODEL INFO:
-## Observations: 50
-## Dependent Variable: Income
-## 
-## MODEL FIT: 
-## F(3,46) = 4, p = 0
-## R-squared = 0.2
-## Adj. R-squared = 0.2
-## 
-## Standard errors: OLS 
-##             Est.   S.E.  t val. p      
-## (Intercept) 5111.1 416.6 12.3   0   ***
-## Frost       -1.3   2.1   -0.6   0.6    
-## Illiteracy  -610.7 213.1 -2.9   0   ***
-## Murder      23.1   30.9  0.7    0.5</code></pre>
-<p>Note that the return object has non-rounded values if you wish to use them later.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">j &lt;-<span class="st"> </span><span class="kw">j_summ</span>(fit, <span class="dt">digits =</span> <span class="dv">3</span>)
-
-j$coeftable</code></pre></div>
-<pre><code>##                    Est.       S.E.     t val.            p
-## (Intercept) 5111.096650 416.576083 12.2692993 4.146240e-16
-## Frost         -1.254074   2.110117 -0.5943151 5.552133e-01
-## Illiteracy  -610.714712 213.137691 -2.8653529 6.259724e-03
-## Murder        23.074026  30.940339  0.7457587 4.596073e-01</code></pre>
-</div>
-<div id="calculate-and-report-variance-inflation-factors-vif" class="section level3">
-<h3>Calculate and report variance inflation factors (VIF)</h3>
-<p>When multicollinearity is a concern, it can be useful to have VIFs reported alongside each variable. This can be particularly helpful for model comparison and checking for the impact of newly-added variables. To get VIFs reported in the output table, just set <code>vifs = TRUE</code>.</p>
-<p>Note that the <code>car</code> package is needed to calculate VIFs.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">vifs =</span> <span class="ot">TRUE</span>)</code></pre></div>
-<pre><code>## MODEL INFO:
-## Observations: 50
-## Dependent Variable: Income
-## 
-## MODEL FIT: 
-## F(3,46) = 4.049, p = 0.012
-## R-squared = 0.209
-## Adj. R-squared = 0.157
-## 
-## Standard errors: OLS 
-##             Est.     S.E.    t val. p         VIF  
-## (Intercept) 5111.097 416.576 12.269 0     ***      
-## Frost       -1.254   2.11    -0.594 0.555     1.853
-## Illiteracy  -610.715 213.138 -2.865 0.006 **  2.599
-## Murder      23.074   30.94   0.746  0.46      2.009</code></pre>
-<p>There are many standards researchers apply for deciding whether a VIF is too large. In some domains, a VIF over 2 is worthy of suspicion. Others set the bar higher, at 5 or 10. Ultimately, the main thing to consider is that small effects are more likely to be “drowned out” by higher VIFs.</p>
-</div>
-<div id="standardized-beta-coefficients" class="section level3">
-<h3>Standardized beta coefficients</h3>
-<p>Some prefer to use standardized coefficients in order to avoid dismissing an effect as “small” when it is just the units of measure that are small. Standardized betas are used instead when <code>standardized = TRUE</code>. To be clear, since the meaning of “standardized beta” can vary depending on who you talk to, this option mean-centers the variables too.</p>
+<div id="standardized-beta-coefficients" class="section level2">
+<h2>Standardized beta coefficients</h2>
+<p>Some prefer to use standardized coefficients in order to avoid dismissing an effect as “small” when it is just the units of measure that are small. Standardized betas are used instead when <code>standardize = TRUE</code>. To be clear, since the meaning of “standardized beta” can vary depending on who you talk to, this option mean-centers the variables too.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">standardize =</span> <span class="ot">TRUE</span>)</code></pre></div>
 <pre><code>## MODEL INFO:
 ## Observations: 50
@@ -244,7 +175,7 @@ j$coeftable</code></pre></div>
 ## 
 ## Standard errors: OLS 
 ##             Est.     S.E.    t val. p        
-## (Intercept) 4435.8   79.773  55.605 0     ***
+## (Intercept) 5111.097 416.576 12.269 0     ***
 ## Frost       -65.188  109.686 -0.594 0.555    
 ## Illiteracy  -372.251 129.914 -2.865 0.006 ** 
 ## Murder      85.179   114.217 0.746  0.46     
@@ -263,14 +194,13 @@ j$coeftable</code></pre></div>
 ## 
 ## Standard errors: OLS 
 ##             Est.     S.E.    t val. p        
-## (Intercept) 4435.8   79.773  55.605 0     ***
+## (Intercept) 5111.097 416.576 12.269 0     ***
 ## Frost       -130.376 219.371 -0.594 0.555    
 ## Illiteracy  -744.502 259.829 -2.865 0.006 ** 
 ## Murder      170.357  228.435 0.746  0.46     
 ## 
 ## All continuous variables are mean-centered and scaled by 2 s.d.</code></pre>
 <p>Note that this is achieved by refitting the model. If the model took a long time to fit initially, expect a similarly long time to refit it.</p>
-</div>
 <div id="mean-centered-variables" class="section level3">
 <h3>Mean-centered variables</h3>
 <p>In the same vein as the standardization feature, you can keep the original scale while still mean-centering the predictors with the <code>center = TRUE</code> argument.</p>
@@ -292,6 +222,208 @@ j$coeftable</code></pre></div>
 ## Murder      23.074   30.94   0.746  0.46     
 ## 
 ## All continuous variables are mean-centered.</code></pre>
+</div>
+</div>
+<div id="confidence-intervals" class="section level2">
+<h2>Confidence intervals</h2>
+<p>In many cases, you’ll learn more by looking at confidence intervals than p-values. You can request them from <code>j_summ</code>.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">confint =</span> <span class="ot">TRUE</span>, <span class="dt">digits =</span> <span class="dv">2</span>)</code></pre></div>
+<pre><code>## MODEL INFO:
+## Observations: 50
+## Dependent Variable: Income
+## 
+## MODEL FIT: 
+## F(3,46) = 4.05, p = 0.01
+## R-squared = 0.21
+## Adj. R-squared = 0.16
+## 
+## Standard errors: OLS 
+##             Est.    2.5%     97.5%   t val. p       
+## (Intercept) 5111.1  4294.62  5927.57 12.27  0    ***
+## Frost       -1.25   -5.39    2.88    -0.59  0.56    
+## Illiteracy  -610.71 -1028.46 -192.97 -2.87  0.01 ** 
+## Murder      23.07   -37.57   83.72   0.75   0.46</code></pre>
+<p>You can adjust the width of the confidence intervals, which are by default 95% CIs.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">confint =</span> <span class="ot">TRUE</span>, <span class="dt">ci.width =</span> .<span class="dv">5</span>, <span class="dt">digits =</span> <span class="dv">2</span>)</code></pre></div>
+<pre><code>## MODEL INFO:
+## Observations: 50
+## Dependent Variable: Income
+## 
+## MODEL FIT: 
+## F(3,46) = 4.05, p = 0.01
+## R-squared = 0.21
+## Adj. R-squared = 0.16
+## 
+## Standard errors: OLS 
+##             Est.    25%     75%     t val. p       
+## (Intercept) 5111.1  4830.12 5392.07 12.27  0    ***
+## Frost       -1.25   -2.68   0.17    -0.59  0.56    
+## Illiteracy  -610.71 -754.47 -466.96 -2.87  0.01 ** 
+## Murder      23.07   2.21    43.94   0.75   0.46</code></pre>
+<p>You might also want to drop the p-values altogether.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">confint =</span> <span class="ot">TRUE</span>, <span class="dt">pvals =</span> <span class="ot">FALSE</span>, <span class="dt">digits =</span> <span class="dv">2</span>)</code></pre></div>
+<pre><code>## MODEL INFO:
+## Observations: 50
+## Dependent Variable: Income
+## 
+## MODEL FIT: 
+## F(3,46) = 4.05, p = 0.01
+## R-squared = 0.21
+## Adj. R-squared = 0.16
+## 
+## Standard errors: OLS 
+##                 Est.     2.5%    97.5%   t val.
+## (Intercept)  5111.10  4294.62  5927.57    12.27
+## Frost          -1.25    -5.39     2.88    -0.59
+## Illiteracy   -610.71 -1028.46  -192.97    -2.87
+## Murder         23.07   -37.57    83.72     0.75</code></pre>
+<p>Note that you can omit p-values without using confidence intervals.</p>
+</div>
+<div id="generalized-and-mixed-models" class="section level2">
+<h2>Generalized and Mixed models</h2>
+<p><code>j_summ</code> has been expanding its range of supported model types. <code>glm</code> was a natural extension and will cover most use cases.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">fitg &lt;-<span class="st"> </span><span class="kw">glm</span>(vs <span class="op">~</span><span class="st"> </span>drat <span class="op">+</span><span class="st"> </span>mpg, <span class="dt">data =</span> mtcars, <span class="dt">family =</span> binomial)
+
+<span class="kw">j_summ</span>(fitg)</code></pre></div>
+<pre><code>## MODEL INFO:
+## Observations: 32
+## Dependent Variable: vs
+## Error Distribution: binomial
+## Link function: logit
+## 
+## MODEL FIT: 
+## Pseudo R-squared (Cragg-Uhler) = 0.589
+## Pseudo R-squared (McFadden) = 0.422
+## AIC = 31.35087
+## 
+## Standard errors: MLE 
+##             Est.   S.E.  z val. p      
+## (Intercept) -7.755 4     -1.939 0.053 .
+## drat        -0.562 1.333 -0.422 0.673  
+## mpg         0.477  0.2   2.38   0.017 *</code></pre>
+<p>For exponential family models, especially logit and Poisson, you may be interested in getting odds ratios rather than the linear beta estimates. <code>j_summ</code> can handle that!</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fitg, <span class="dt">odds.ratio =</span> <span class="ot">TRUE</span>)</code></pre></div>
+<pre><code>## MODEL INFO:
+## Observations: 32
+## Dependent Variable: vs
+## Error Distribution: binomial
+## Link function: logit
+## 
+## MODEL FIT: 
+## Pseudo R-squared (Cragg-Uhler) = 0.589
+## Pseudo R-squared (McFadden) = 0.422
+## AIC = 31.35087
+## 
+## Standard errors: MLE 
+##             Odds Ratio 2.5%  97.5% z val. p      
+## (Intercept) 0          0     1.089 -1.939 0.053 .
+## drat        0.57       0.042 7.769 -0.422 0.673  
+## mpg         1.611      1.088 2.387 2.38   0.017 *</code></pre>
+<p>Standard errors are omitted for odds ratio estimates since the confidence intervals are not symmetrical.</p>
+<p>You can also get summaries of <code>merMod</code> objects, the mixed models from the <code>lme4</code> package.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(lme4)
+fm1 &lt;-<span class="st"> </span><span class="kw">lmer</span>(Reaction <span class="op">~</span><span class="st"> </span>Days <span class="op">+</span><span class="st"> </span>(Days <span class="op">|</span><span class="st"> </span>Subject), sleepstudy)
+
+<span class="kw">j_summ</span>(fm1)</code></pre></div>
+<pre><code>## MODEL INFO:
+## Observations: 180
+## Dependent Variable: Reaction
+## Type: Mixed effects linear regression 
+## 
+## MODEL FIT: 
+## AIC = 61763.939
+## 
+## FIXED EFFECTS:
+##                Est.    S.E.  t val.
+## (Intercept) 251.405   6.825  36.838
+## Days         10.467   1.546   6.771
+## 
+## RANDOM EFFECTS:
+##  Group    Parameter   Std.Dev.
+##  Subject  (Intercept) 24.74   
+##  Subject  Days        5.922   
+##  Residual             25.592  
+## 
+## Grouping variables:
+##  Group   # groups ICC  
+##  Subject 18       0.483</code></pre>
+<p>Note the omission of p-values by default. There’s no clear-cut way to derive p-values with mixed models, since relying on the t statistics can be misleading unless the number of subjects and groups is large. Confidence interval are better, but not perfect. See lme4’s documentation for more info.</p>
+</div>
+<div id="other-options" class="section level2">
+<h2>Other options</h2>
+<div id="choose-how-many-digits-past-the-decimal-to-round-to" class="section level3">
+<h3>Choose how many digits past the decimal to round to</h3>
+<p>With the <code>digits =</code> argument, you can decide how precise you want the outputted numbers to be. It is often inappropriate or distracting to report quantities with many digits past the decimal due to the inability to measure them so precisely or interpret them in applied settings. In other cases, it may be necessary to use more digits due to the way measures are calculated.</p>
+<p>The default argument is <code>digits = 3</code>.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">model.info =</span> <span class="ot">FALSE</span>, <span class="dt">digits =</span> <span class="dv">5</span>)</code></pre></div>
+<pre><code>## MODEL FIT: 
+## F(3,46) = 4.04857, p = 0.01232
+## R-squared = 0.20888
+## Adj. R-squared = 0.15729
+## 
+## Standard errors: OLS 
+##             Est.       S.E.      t val.   p          
+## (Intercept) 5111.09665 416.57608 12.2693  0       ***
+## Frost       -1.25407   2.11012   -0.59432 0.55521    
+## Illiteracy  -610.71471 213.13769 -2.86535 0.00626 ** 
+## Murder      23.07403   30.94034  0.74576  0.45961</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">model.info =</span> <span class="ot">FALSE</span>, <span class="dt">digits =</span> <span class="dv">1</span>)</code></pre></div>
+<pre><code>## MODEL FIT: 
+## F(3,46) = 4, p = 0
+## R-squared = 0.2
+## Adj. R-squared = 0.2
+## 
+## Standard errors: OLS 
+##             Est.   S.E.  t val. p      
+## (Intercept) 5111.1 416.6 12.3   0   ***
+## Frost       -1.3   2.1   -0.6   0.6    
+## Illiteracy  -610.7 213.1 -2.9   0   ** 
+## Murder      23.1   30.9  0.7    0.5</code></pre>
+<p>You can pre-set the number of digits you want printed for all <code>jtools</code> functions with the <code>jtools-digits</code> option.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">options</span>(<span class="st">&quot;jtools-digits&quot;</span> =<span class="st"> </span><span class="dv">2</span>)
+<span class="kw">j_summ</span>(fit, <span class="dt">model.info =</span> <span class="ot">FALSE</span>)</code></pre></div>
+<pre><code>## MODEL FIT: 
+## F(3,46) = 4.05, p = 0.01
+## R-squared = 0.21
+## Adj. R-squared = 0.16
+## 
+## Standard errors: OLS 
+##             Est.    S.E.   t val. p       
+## (Intercept) 5111.1  416.58 12.27  0    ***
+## Frost       -1.25   2.11   -0.59  0.56    
+## Illiteracy  -610.71 213.14 -2.87  0.01 ** 
+## Murder      23.07   30.94  0.75   0.46</code></pre>
+<p>Note that the return object has non-rounded values if you wish to use them later.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">j &lt;-<span class="st"> </span><span class="kw">j_summ</span>(fit, <span class="dt">digits =</span> <span class="dv">3</span>)
+
+j<span class="op">$</span>coeftable</code></pre></div>
+<pre><code>##                    Est.       S.E.     t val.            p
+## (Intercept) 5111.096650 416.576083 12.2692993 4.146240e-16
+## Frost         -1.254074   2.110117 -0.5943151 5.552133e-01
+## Illiteracy  -610.714712 213.137691 -2.8653529 6.259724e-03
+## Murder        23.074026  30.940339  0.7457587 4.596073e-01</code></pre>
+</div>
+<div id="calculate-and-report-variance-inflation-factors-vif" class="section level3">
+<h3>Calculate and report variance inflation factors (VIF)</h3>
+<p>When multicollinearity is a concern, it can be useful to have VIFs reported alongside each variable. This can be particularly helpful for model comparison and checking for the impact of newly-added variables. To get VIFs reported in the output table, just set <code>vifs = TRUE</code>.</p>
+<p>Note that the <code>car</code> package is needed to calculate VIFs.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">j_summ</span>(fit, <span class="dt">vifs =</span> <span class="ot">TRUE</span>)</code></pre></div>
+<pre><code>## MODEL INFO:
+## Observations: 50
+## Dependent Variable: Income
+## 
+## MODEL FIT: 
+## F(3,46) = NA, p = NA
+## R-squared = NA
+## Adj. R-squared = NA
+## 
+## Standard errors: OLS 
+##             Est. S.E. t val. p     VIF
+## (Intercept)                    ***    
+## Frost                                 
+## Illiteracy                     **     
+## Murder</code></pre>
+<p>There are many standards researchers apply for deciding whether a VIF is too large. In some domains, a VIF over 2 is worthy of suspicion. Others set the bar higher, at 5 or 10. Ultimately, the main thing to consider is that small effects are more likely to be “drowned out” by higher VIFs.</p>
 </div>
 </div>
 

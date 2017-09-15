@@ -1,3 +1,104 @@
+## jtools 0.7.1
+
+Returning to CRAN!
+
+A very strange bug on CRAN's servers was causing jtools updates to silently fail
+when I submitted updates; I'd get a confirmation that it passed all tests, but
+a LaTeX error related to an Indian journal I cited was torpedoing it before
+it reached CRAN servers.
+
+The only change from 0.7.0 is fixing that problem, but if you're a CRAN user
+you will want to flip through the past several releases as well to see what 
+you've missed.
+
+## jtools 0.7.0
+
+New features:
+
+* j_summ can now provide cluster-robust standard errors for lm models.
+* j_summ output now gives info about missing observations for supported models.
+* At long last, j_summ/scale_lm/center_lm can standardize/center models with
+logged terms and other functions applied.
+* interact_plot and effect_plot will now also support predictors that have
+functions applied to them.
+* j_summ now supports confidence intervals at user-specified widths.
+* j_summ now allows users to not display p-values if requested.
+* I've added a warning to j_summ output with merMod objects, since it provides
+p-values calculated on the basis of the estimated t-values. These are not to
+be interpreted in the same way that OLS and GLM p-values are, since with 
+smaller samples mixed model t-values will give inflated Type I error rates.
+* By default, j_summ will not show p-values for merMod objects.
+
+Bug fix:
+
+* scale_lm did not have its center argument implemented and did not 
+explain the option well in its documentation.
+* johnson_neyman got confused when a factor variable was given as a predictor
+
+## jtools 0.6.1
+
+Bug fix release:
+
+* wgttest acted in a way that might be unexpected when providing a weights
+variable name but no data argument. Now it should work as expected by getting
+the data frame from the model call.
+* gscale had a few situations in which it choked on missing data, especially
+when weights were used. This in turn affected j_summ, scale_lm, and center_lm,
+which each rely on gscale for standardization and mean-centering. That's fixed 
+now.
+* gscale wasn't playing nicely with binary factors in survey designs, rendering
+the scaling incorrect. If you saw a warning, re-check your outputs after this
+update.
+
+## jtools 0.6.0
+
+A lot of changes!
+
+New functions:
+
+* effect_plot: If you like the visualization of moderation effects from 
+interact_plot, then you should enjoy effect_plot. It is a clone of 
+interact_plot, but shows a single regression line rather than several. It
+supports GLMs and lme4 models and can plot original, observed data points.
+* pf_sv_test: Another tool for survey researchers to test whether it's okay
+to run unweighted regressions. Named after Pfefferman and Svervchkov, who
+devised the test.
+* weights_tests: Like probe_interaction does for the interaction functions,
+weights_tests will run the new pf_sv_test as well as wgttest simultaneously
+with a common set of arguments. 
+
+Enhancements:
+
+* Set a default number of digits to print for all jtools functions with the
+option "jtools-digits". 
+* wgttest now accepts and tests GLMs and may work for other regression models.
+
+
+Bug fixes:
+
+* j_summ would print significance stars based on the rounded p value, sometimes
+resulting in misleading output. Now significance stars are based on the 
+non-rounded p values.
+* probe_interaction did not pass an "alpha" argument to sim_slopes, possibly
+confusing users of johnson_neyman. The argument sim_slopes is looking for is 
+called "jnalpha". Now probe_interaction will pass "alpha" arguments as "jn_alpha".
+* interact_plot would stop on an error when the model included a two-level factor
+not involved in the interaction and not centered. Now those factors in that 
+situation are treated like other factors.
+* interact_plot sometimes gave misleading output when users manually defined
+moderator labels. It is now more consistent with the ordering the labels and 
+values and will not wrongly label them when the values are provided in an
+odd order.
+* wgttest now functions properly when a vector of weights is provided to the
+weights argument rather than a column name.
+* gscale now works properly on tibbles, which requires a different style of 
+column indexing than data frames.
+* Related to the prior point, j_summ/standardize_lm/center_lm now work properly
+on models that were originally fit with tibbles in the data argument.
+* sim_slopes would fail for certain weighted lm objects depending on the way
+the weights were specified in the function call. It should now work for all
+weighted lm objects.
+
 ## jtools 0.5.0
 
 More goodies for users of interact_plot:

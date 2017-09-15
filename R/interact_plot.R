@@ -124,6 +124,9 @@
 #'   effects are plotted. \code{lme4} does not provide confidence intervals,
 #'   so they are not supported with this function either.
 #'
+#'   Note: to use transformed predictors, e.g., \code{log(variable)},
+#'   put its name in quotes or backticks in the argument.
+#'
 #' @return The functions returns a \code{ggplot} object, which can be treated like
 #'   a user-created plot and expanded upon as such.
 #'
@@ -225,6 +228,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     fvars <- as.character(attributes(terms(model))$variables)
     # for some reason I can't get rid of the "list" as first element
     fvars <- fvars[2:length(fvars)]
+    all.vars <- fvars
 
     facvars <- c()
     for (v in fvars) {
@@ -250,6 +254,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     fvars <- as.character(attributes(terms(model))$variables)
     # for some reason I can't get rid of the "list" as first element
     fvars <- fvars[2:length(fvars)]
+    all.vars <- fvars
 
     facvars <- c()
     for (v in fvars) {
@@ -317,14 +322,47 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
       if (weights == FALSE) {
         d <- gscale(x = centered, data = d, center.only = !standardize,
                     n.sd = n.sd)
+
+        # Dealing with two-level factors that aren't part of an interaction/focal pred
+        for (v in fvars[!(fvars %in% c(pred, resp, modx, mod2, wname, "(offset)"))]) {
+          if (is.factor(d[,v]) && length(unique(d[,v])) == 2 &&
+              !(v %in% centered)) {
+
+            facvars <- c(facvars, v)
+
+          }
+        }
+
       } else {
         d <- gscale(x = centered, data = d, center.only = !standardize,
                     weights = wname, n.sd = n.sd)
+
+        # Dealing with two-level factors that aren't part of an interaction/focal pred
+        for (v in fvars[!(fvars %in% c(pred, resp, modx, mod2, wname, "(offset)"))]) {
+          if (is.factor(d[,v]) && length(unique(d[,v])) == 2 &&
+              !(v %in% centered)) {
+
+            facvars <- c(facvars, v)
+
+          }
+        }
+
       }
     } else if (survey == TRUE) {
       design <- gscale(x = centered, data = design, center.only = !standardize,
                        n.sd = n.sd)
       d <- design$variables
+
+      # Dealing with two-level factors that aren't part of an interaction/focal pred
+      for (v in fvars[!(fvars %in% c(pred, resp, modx, mod2, wname, "(offset)"))]) {
+        if (is.factor(d[,v]) && length(unique(d[,v])) == 2 &&
+            !(v %in% centered)) {
+
+          facvars <- c(facvars, v)
+
+        }
+      }
+
     }
   } else if (!is.null(centered) && centered == "all") {
     # Need to handle surveys differently within this condition
@@ -348,6 +386,15 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
       }
     }
   } else if (!is.null(centered) && centered == "none") {
+
+    # Dealing with two-level factors that aren't part of an interaction/focal pred
+    for (v in fvars[!(fvars %in% c(pred, resp, modx, mod2, wname, "(offset)"))]) {
+      if (is.factor(d[,v]) && length(unique(d[,v])) == 2) {
+
+        facvars <- c(facvars, v)
+
+      }
+    }
 
   } else { # Center all non-focal
     # Centering the non-focal variables to make the slopes more interpretable
@@ -464,7 +511,14 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
   } else { # Use user-supplied values otherwise
 
-    modxvals2 <- sort(modxvals, decreasing = T)
+    if (!is.null(modx.labels)) {
+      # What I'm doing here is preserving the label order
+      names(modxvals) <- modx.labels
+      modxvals2 <- sort(modxvals, decreasing = T)
+      modx.labels <- names(modxvals2)
+    } else {
+      modxvals2 <- sort(modxvals, decreasing = T)
+    }
 
   }
 
@@ -562,7 +616,14 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
     } else { # Use user-supplied values otherwise
 
-      mod2vals2 <- sort(mod2vals, decreasing = F)
+      if (!is.null(mod2.labels)) {
+        # What I'm doing here is preserving the label order
+        names(mod2vals) <- mod2.labels
+        mod2vals2 <- sort(mod2vals, decreasing = T)
+        mod2.labels <- names(mod2vals2)
+      } else {
+        mod2vals2 <- sort(mod2vals, decreasing = T)
+      }
 
     }
 
@@ -586,9 +647,9 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
 
   # Creating a set of dummy values of the focal predictor for use in predict()
-  xpreds <- seq(from=range(d[!is.na(d[,pred]),pred])[1],
-                to=range(d[!is.na(d[,pred]),pred])[2],
-                length.out=100)
+  xpreds <- seq(from = range(d[!is.na(d[,pred]),pred])[1],
+                to = range(d[!is.na(d[,pred]),pred])[2],
+                length.out = 100)
   xpreds <- rep(xpreds, length(modxvals2))
 
   # Create values of moderator for use in predict()
@@ -678,6 +739,18 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   }
 
   # Create predicted values based on specified levels of the moderator, focal predictor
+  ## This is passed to predict(), but for svyglm needs to be TRUE always
+  interval_arg <- interval
+
+  # Back-ticking variable names in formula to prevent problems with transformed preds
+  formc <- as.character(deparse(formula(model)))
+  for (var in all.vars) {
+
+    bt_name <- paste("`", var, "`", sep = "")
+    formc <- gsub(var, bt_name, formc, fixed = TRUE)
+
+  }
+  form <- as.formula(formc)
 
   ## Don't update model if no vars were centered
   if (!is.null(centered) && centered == "none") {
@@ -685,36 +758,39 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   } else {
     if (survey == FALSE) {
       if (mixed == FALSE) {
-        modelu <- update(model, data = d)
+        modelu <- update(model, formula = form, data = d)
       } else {
         optimiz <- model@optinfo$optimizer
         if (class(model) == "glmerMod") {
-          modelu <- update(model, data = d,
+          modelu <- update(model, formula = form, data = d,
                            control = lme4::glmerControl(optimizer = optimiz,
                                                         calc.derivs = FALSE))
         } else {
-          modelu <- update(model, data = d,
+          modelu <- update(model, formula = form, data = d,
                            control = lme4::lmerControl(optimizer = optimiz,
                                                         calc.derivs = FALSE))
         }
       }
     } else {
       # Have to do all this to avoid adding survey to dependencies
+      interval_arg <- TRUE
       call <- getCall(model)
       call$design <- design
+      call$formula <- form
       call[[1]] <- survey::svyglm
       modelu <- eval(call)
     }
   }
 
   if (mixed == TRUE) {
-    predicted <- as.data.frame(predict(modelu, pm,
+    predicted <- as.data.frame(predict(modelu, newdata = pm,
                                        type = outcome.scale,
                                        allow.new.levels = F,
                                        re.form = ~0))
   } else {
-    predicted <- as.data.frame(predict(modelu, pm, se.fit=T,
-                                       interval=int.type[1],
+    predicted <- as.data.frame(predict(modelu, newdata = pm,
+                                       se.fit = interval_arg,
+                                       interval = int.type[1],
                                        type = outcome.scale))
   }
   pm[,resp] <- predicted[,1] # this is the actual values
@@ -739,13 +815,6 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     # Do nothing
   }
 
-  # For plotting, it's good to have moderator as factor...
-  # but not until after predict() is used
-  pm[,modx] <- as.factor(pm[,modx])
-  if (!is.null(mod2)) {
-    pm[,mod2] <- as.factor(pm[,mod2])
-  }
-
   # Saving x-axis label
   if (is.null(x.label)){
     x.label <- pred
@@ -758,9 +827,9 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
   # Labels for values of moderator
   if (is.null(modx.labels)) {
-    if (exists("modxvalssd") && length(modxvalssd)==2){
+    if (exists("modxvalssd") && length(modxvalssd) == 2){
       pm[,modx] <- factor(pm[,modx], labels=names(sort(modxvals2, decreasing = F)))
-    } else if (exists("modxvalssd") && length(modxvalssd)==3){
+    } else if (exists("modxvalssd") && length(modxvalssd) == 3){
       pm[,modx] <- factor(pm[,modx], labels=names(sort(modxvals2, decreasing = F)))
     } else if (!is.factor(d[,modx])) {
       labs <- as.character(modxvals2)
@@ -770,20 +839,18 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
       pm[,modx] <- factor(pm[,modx], levels = modxvals2)
     }
   } else if (length(modx.labels) == length(modxvals2)) {
-    if (!is.factor(d[,modx])) {
-      pm[,modx] <- factor(pm[,modx], labels = modx.labels)
-    } else if (is.factor(d[,modx])) {
-      pm[,modx] <- factor(pm[,modx], levels = modxvals2, labels = modx.labels)
-    }
+
+    pm[,modx] <- factor(pm[,modx], levels = modxvals2, labels = modx.labels)
+
   } else {warning("modx.labels argument was not the same length as modxvals. Ignoring...")}
 
 
   # Setting labels for second moderator
   if (!is.null(mod2)) {
     if (is.null(mod2.labels)) {
-      if (exists("mod2valssd") && length(mod2valssd)==2){
+      if (exists("mod2valssd") && length(mod2valssd) == 2){
         pm[,mod2] <- factor(pm[,mod2], labels=names(sort(mod2vals2, decreasing = F)))
-      } else if (exists("mod2valssd") && length(mod2valssd)==3){
+      } else if (exists("mod2valssd") && length(mod2valssd) == 3){
         pm[,mod2] <- factor(pm[,mod2], labels=names(sort(mod2vals2, decreasing = F)))
       } else if (!is.factor(d[,mod2])) {
         labs <- as.character(mod2vals2)
@@ -793,12 +860,10 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
         pm[,mod2] <- factor(pm[,mod2], levels = mod2vals2)
       }
     } else if (length(mod2.labels) == length(mod2vals2)) {
-      if (!is.factor(d[,mod2])) {
-        pm[,mod2] <- factor(pm[,mod2], labels = mod2.labels)
-      } else if (is.factor(d[,mod2])) {
-        pm[,mod2] <- factor(pm[,mod2], levels = mod2vals2, labels = mod2.labels)
-      }
-    } else {warning("mod2.labels argument was not the same length as modxvals. Ignoring...")}
+
+      pm[,mod2] <- factor(pm[,mod2], levels = mod2vals2, labels = mod2.labels)
+
+    } else {warning("mod2.labels argument was not the same length as mod2vals. Ignoring...")}
   }
 
   # If no user-supplied legend title, set it to name of moderator
@@ -813,11 +878,14 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
   # Defining linetype here
   if (vary.lty == TRUE) {
-    p <- ggplot2::ggplot(pm, ggplot2::aes(x=pm[,pred], y=pm[,resp], colour=pm[,modx],
-                                          group=pm[,modx], linetype = pm[,modx]))
+    p <- ggplot2::ggplot(pm, ggplot2::aes(x = pm[,pred], y = pm[,resp],
+                                          colour = pm[,modx],
+                                          group = pm[,modx],
+                                          linetype = pm[,modx]))
   } else {
-    p <- ggplot2::ggplot(pm, ggplot2::aes(x=pm[,pred], y=pm[,resp], colour=pm[,modx],
-                                          group=pm[,modx]))
+    p <- ggplot2::ggplot(pm, ggplot2::aes(x = pm[,pred], y = pm[,resp],
+                                          colour = pm[,modx],
+                                          group = pm[,modx]))
   }
 
   # Define line thickness
@@ -825,15 +893,19 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
   # Plot intervals if requested
   if (interval==TRUE) {
-    p <- p + ggplot2::geom_ribbon(data=pm, ggplot2::aes(ymin=pm[,"ymin"],
-                                                        ymax=pm[,"ymax"],
+    p <- p + ggplot2::geom_ribbon(data = pm, ggplot2::aes(ymin = pm[,"ymin"],
+                                                        ymax = pm[,"ymax"],
                                                         fill = pm[,modx],
-                                                        colour = NA),
-                                  alpha=1/5, show.legend = FALSE)
+                                                        group = pm[,modx],
+                                                        colour = pm[,modx],
+                                                        linetype = NA
+                                                        ),
+                                  alpha = 1/5, show.legend = FALSE)
     if (facmod == TRUE) {
       p <- p + ggplot2::scale_fill_brewer(palette = color.class)
     } else {
-      p <- p + ggplot2::scale_fill_manual(values = colors, breaks = levels(pm[,modx]))
+      p <- p + ggplot2::scale_fill_manual(values = colors,
+                                          breaks = levels(pm[,modx]))
     }
   }
 
@@ -844,11 +916,11 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
   # For factor vars, plotting the observed points and coloring them by factor looks great
   if (plot.points==TRUE && is.factor(d[,modx])) {
-    p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x=d[,pred],y=d[,resp],
-                                                      colour=d[,modx]),
+    p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x = d[,pred], y = d[,resp],
+                                                      colour = d[,modx]),
                                  position = "jitter", inherit.aes = F, show.legend = F)
   } else if (plot.points == TRUE && !is.factor(d[,modx])) { # otherwise just black points
-    p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x=d[,pred], y=d[,resp]),
+    p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x = d[,pred], y = d[,resp]),
                                  inherit.aes = F, position = "jitter")
   }
 

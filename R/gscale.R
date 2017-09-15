@@ -151,9 +151,9 @@ if (is.numeric(x)) {
     } else if (binary.inputs=="center") {
       # Actually mean center
       if (is.null(weights)) {
-        return(x-mean(x.obs))
+        return(x - mean(x.obs, na.rm = TRUE))
       } else {
-        return(x-weighted.mean(x.obs, weights))
+        return(x - weighted.mean(x.obs, weights, na.rm = TRUE))
       }
 
     } else if (binary.inputs=="full") {
@@ -161,25 +161,43 @@ if (is.numeric(x)) {
 
       # support for weights
       if (is.null(weights)) {
+
         if (center.only == FALSE && scale.only == FALSE) {
-          return((x-mean(x.obs))/(n.sd*sd(x.obs)))
+
+          return((x - mean(x.obs, na.rm = TRUE)) / (n.sd*sd(x.obs, na.rm = TRUE)))
+
         } else if (center.only == TRUE && scale.only == FALSE) {
-          return(x - mean(x.obs))
+
+          return(x - mean(x.obs, na.rm = TRUE))
+
         } else if (center.only == FALSE && scale.only == TRUE) {
-          return(x/n.sd*sd(x.obs))
+
+          return(x / n.sd*sd(x.obs, na.rm = TRUE))
+
         } else if (center.only == TRUE && scale.only == TRUE) {
+
           stop("You cannot set both center.only and scale.only to TRUE.")
+
         }
       } else {
 
         if (center.only == FALSE && scale.only == FALSE) {
-          return((x-weighted.mean(x.obs, weights))/(n.sd*wtd.sd(x.obs, weights)))
+
+          return((x - weighted.mean(x.obs, weights, na.rm = TRUE)) /
+                   (n.sd*wtd.sd(x.obs, weights)))
+
         } else if (center.only == TRUE && scale.only == FALSE) {
-          return(x - weighted.mean(x.obs, weights))
+
+          return(x - weighted.mean(x.obs, weights, na.rm = TRUE))
+
         } else if (center.only == FALSE && scale.only == TRUE) {
-          return(x/n.sd*wtd.sd(x.obs, weights))
+
+          return(x / n.sd*wtd.sd(x.obs, weights))
+
         } else if (center.only == TRUE && scale.only == TRUE) {
+
           stop("You cannot set both center.only and scale.only to TRUE.")
+
         }
       }
 
@@ -188,25 +206,43 @@ if (is.numeric(x)) {
 
     # support for weights
     if (is.null(weights)) {
+
       if (center.only == FALSE && scale.only == FALSE) {
-        return((x-mean(x.obs))/(n.sd*sd(x.obs)))
+
+        return((x - mean(x.obs, na.rm = TRUE)) / (n.sd*sd(x.obs, na.rm = TRUE)))
+
       } else if (center.only == TRUE && scale.only == FALSE) {
-        return(x - mean(x.obs))
+
+        return(x - mean(x.obs, na.rm = TRUE))
+
       } else if (center.only == FALSE && scale.only == TRUE) {
-        return(x/n.sd*sd(x.obs))
+
+        return(x / n.sd*sd(x.obs, na.rm = TRUE))
+
       } else if (center.only == TRUE && scale.only == TRUE) {
+
         stop("You cannot set both center.only and scale.only to TRUE.")
+
       }
     } else {
 
       if (center.only == FALSE && scale.only == FALSE) {
-        return((x-weighted.mean(x.obs, weights))/(n.sd*wtd.sd(x.obs, weights)))
+
+        return((x - weighted.mean(x.obs, weights, na.rm = TRUE)) /
+                 (n.sd*wtd.sd(x.obs, weights)))
+
       } else if (center.only == TRUE && scale.only == FALSE) {
-        return(x - weighted.mean(x.obs, weights))
+
+        return(x - weighted.mean(x.obs, weights, na.rm = TRUE))
+
       } else if (center.only == FALSE && scale.only == TRUE) {
-        return(x/n.sd*wtd.sd(x.obs, weights))
+
+        return(x / n.sd*wtd.sd(x.obs, weights))
+
       } else if (center.only == TRUE && scale.only == TRUE) {
+
         stop("You cannot set both center.only and scale.only to TRUE.")
+
       }
     }
 
@@ -241,11 +277,16 @@ if (is.numeric(x)) {
       wname <- as.character(substitute(weights))
       wname2 <- weights
 
-      if (wname %in% names(d)) {
-        weights <- d[,wname]
+      suppressWarnings({if (wname %in% names(d)) {
+
+        weights <- d[[wname]]
+
       } else if (wname2 %in% names(d)) {
-        weights <- d[,wname2]
+
+        weights <- d[[wname2]]
+
       }
+      })
 
     }
 
@@ -253,28 +294,34 @@ if (is.numeric(x)) {
     for (i in x) {
 
       # Dealing with two-level factors
-      if (length(unique(d[,i])) == 2 && is.factor(d[,i])) {
-        d[,i] <- as.numeric(d[,i]) - 1
+      if (length(unique(d[[i]])) == 2 && is.factor(d[[i]])) {
+
+        d[[i]] <- as.numeric(d[[i]]) - 1
+
       } # Now it will follow the logic of any numeric binary var
 
       # Now just calling the rescale function, basically
       # for binary cases
-      if (length(unique(d[,i])) == 2 && is.numeric(d[,i])) {
+      if (length(unique(d[[i]])) == 2 && is.numeric(d[[i]])) {
 
         if (binary.inputs=="0/1") {
 
-          d[,i] <- (d[,i]-min(d[,i]))/(max(d[,i])-min(d[,i]))
+          d[[i]] <- (d[[i]] - min(d[[i]])) / (max(d[[i]]) - min(d[[i]]))
 
         } else if (binary.inputs=="-0.5/0.5") {
 
-          d[,i] <- (d[,i]-0.5)
+          d[[i]] <- (d[[i]] - 0.5)
 
         } else if (binary.inputs=="center") {
 
           if (is.null(weights)) {
-            d[,i] <- (d[,i]-mean(d[,i], na.rm = TRUE))
+
+            d[[i]] <- (d[[i]] - mean(d[[i]], na.rm = TRUE))
+
           } else {
-            d[,i] <- (d[,i]-weighted.mean(d[,i], weights, na.rm = TRUE))
+
+            d[[i]] <- (d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE))
+
           }
 
         } else if (binary.inputs=="full") {
@@ -282,51 +329,88 @@ if (is.numeric(x)) {
           # support for weights, although clunky
           if (is.null(weights)) {
             if (center.only == FALSE && scale.only == FALSE) {
-              d[,i] <- ((d[,i]-mean(d[,i], na.rm = TRUE))/(n.sd*sd(d[,i], na.rm = TRUE)))
+
+              d[[i]] <- ((d[[i]] - mean(d[[i]], na.rm = TRUE)) /
+                           (n.sd*sd(d[[i]], na.rm = TRUE)))
+
             } else if (center.only == TRUE && scale.only == FALSE) {
-              d[,i] <- d[,i]-mean(d[,i], na.rm = TRUE)
+
+              d[[i]] <- d[[i]] - mean(d[[i]], na.rm = TRUE)
+
             } else if (center.only == FALSE && scale.only == TRUE) {
-              d[,i] <- d[,i]/(n.sd*sd(d[,i], na.rm = TRUE))
+
+              d[[i]] <- d[[i]] / (n.sd*sd(d[[i]], na.rm = TRUE))
+
             } else if (center.only == TRUE && scale.only == TRUE) {
+
               stop("You cannot set both center.only and scale.only to TRUE.")
+
             }
           } else {
 
             if (center.only == FALSE && scale.only == FALSE) {
-              d[,i] <- ((d[,i]-weighted.mean(d[,i], weights))/(n.sd*wtd.sd(d[,i], weights)))
+
+              d[[i]] <-
+                ((d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)) /
+                           (n.sd*wtd.sd(d[[i]], weights)))
+
             } else if (center.only == TRUE && scale.only == FALSE) {
-              d[,i] <- d[,i]-weighted.mean(d[,i], weights)
+
+              d[[i]] <- d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)
+
             } else if (center.only == FALSE && scale.only == TRUE) {
-              d[,i] <- d[,i]/(n.sd*wtd.sd(d[,i], weights))
+
+              d[[i]] <- d[[i]] / (n.sd*wtd.sd(d[[i]], weights))
+
             } else if (center.only == TRUE && scale.only == TRUE) {
+
               stop("You cannot set both center.only and scale.only to TRUE.")
+
             }
           }
 
         }
-      } else if (is.numeric(d[,i])) {
+      } else if (is.numeric(d[[i]])) {
 
         # support for weights, though fairly clunky
         if (is.null(weights)) {
           if (center.only == FALSE && scale.only == FALSE) {
-            d[,i] <- ((d[,i]-mean(d[,i], na.rm = TRUE))/(n.sd*sd(d[,i], na.rm = TRUE)))
+
+            d[[i]] <- ((d[[i]] - mean(d[[i]], na.rm = TRUE)) /
+                 (n.sd*sd(d[[i]], na.rm = TRUE)))
+
           } else if (center.only == TRUE && scale.only == FALSE) {
-            d[,i] <- d[,i]-mean(d[,i], na.rm = TRUE)
+
+            d[[i]] <- d[[i]] - mean(d[[i]], na.rm = TRUE)
+
           } else if (center.only == FALSE && scale.only == TRUE) {
-            d[,i] <- d[,i]/(n.sd*sd(d[,i], na.rm = TRUE))
+
+            d[[i]] <- d[[i]] / (n.sd*sd(d[[i]], na.rm = TRUE))
+
           } else if (center.only == TRUE && scale.only == TRUE) {
+
             stop("You cannot set both center.only and scale.only to TRUE.")
+
           }
         } else {
 
           if (center.only == FALSE && scale.only == FALSE) {
-            d[,i] <- ((d[,i]-weighted.mean(d[,i], weights))/(n.sd*wtd.sd(d[,i], weights)))
+
+            d[[i]] <- ((d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)) /
+                         (n.sd*wtd.sd(d[[i]], weights)))
+
           } else if (center.only == TRUE && scale.only == FALSE) {
-            d[,i] <- d[,i]-weighted.mean(d[,i], weights)
+
+            d[[i]] <- d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)
+
           } else if (center.only == FALSE && scale.only == TRUE) {
-            d[,i] <- d[,i]/(n.sd*wtd.sd(d[,i], weights))
+
+            d[[i]] <- d[[i]] / (n.sd*wtd.sd(d[[i]], weights))
+
           } else if (center.only == TRUE && scale.only == TRUE) {
+
             stop("You cannot set both center.only and scale.only to TRUE.")
+
           }
         }
 
@@ -344,11 +428,16 @@ if (is.numeric(x)) {
       wname <- as.character(substitute(weights))
       wname2 <- weights
 
-      if (wname %in% names(d)) {
-        weights <- d[,wname]
+      suppressWarnings({if (wname %in% names(d)) {
+
+        weights <- d[[wname]]
+
       } else if (wname2 %in% names(d)) {
-        weights <- d[,wname2]
+
+        weights <- d[[wname2]]
+
       }
+      })
     }
 
     # Looping through every column with rescale
@@ -360,91 +449,134 @@ if (is.numeric(x)) {
         if (names(d)[i] == wname) {
           skip <- TRUE
         }
+
       }
 
-      if ((!is.numeric(d[,i]) & length(unique(d[,i])) != 2) || all(is.na(d[,i])) || skip == TRUE) {
+      if ((!is.numeric(d[[i]]) & length(unique(d[[i]])) != 2) || all(is.na(d[[i]])) || skip == TRUE) {
         # just skip over non-numeric variables except binary factors
         # columns that are all NA will still show up as numeric
-        if (all(is.na(d[,i]))) {
+        if (all(is.na(d[[i]]))) {
+
           message <- paste("All values of", names(d)[i], "were NA. Skipping...\n")
           warning(message)
+
         }
+
       } else {
 
       # Dealing with two-level factors
-      if (length(unique(d[,i])) == 2 && is.factor(d[,i])) {
-        d[,i] <- as.numeric(d[,i]) - 1
+      if (length(unique(d[[i]])) == 2 && is.factor(d[[i]])) {
+        d[[i]] <- as.numeric(d[[i]]) - 1
       } # Now it will follow the logic of any numeric binary var
 
       # for binary cases
-      if (length(unique(d[,i])) == 2) {
+      if (length(unique(d[[i]])) == 2) {
 
         if (binary.inputs=="0/1") {
 
-          d[,i] <- (d[,i]-min(d[,i]))/(max(d[,i])-min(d[,i]))
+          d[[i]] <- (d[[i]] - min(d[[i]])) / (max(d[[i]]) - min(d[[i]]))
 
         } else if (binary.inputs=="-0.5/0.5") {
 
-          d[,i] <- (d[,i]-0.5)
+          d[[i]] <- d[[i]] - 0.5
 
         } else if (binary.inputs=="center") {
 
           if (is.null(weights)) {
-            d[,i] <- (d[,i]-mean(d[,i], na.rm = TRUE))
+            d[[i]] <- d[[i]] - mean(d[[i]], na.rm = TRUE)
           } else {
-            d[,i] <- (d[,i]-weighted.mean(d[,i], weights, na.rm = TRUE))
+            d[[i]] <- d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)
           }
 
         } else if (binary.inputs=="full") {
 
           # support for weights, although clunky
           if (is.null(weights)) {
+
             if (center.only == FALSE && scale.only == FALSE) {
-              d[,i] <- ((d[,i]-mean(d[,i], na.rm = TRUE))/(n.sd*sd(d[,i], na.rm = TRUE)))
+
+              d[[i]] <- ((d[[i]] - mean(d[[i]], na.rm = TRUE)) /
+                           (n.sd*sd(d[[i]], na.rm = TRUE)))
+
             } else if (center.only == TRUE && scale.only == FALSE) {
-              d[,i] <- d[,i]-mean(d[,i], na.rm = TRUE)
+
+              d[[i]] <- d[[i]] - mean(d[[i]], na.rm = TRUE)
+
             } else if (center.only == FALSE && scale.only == TRUE) {
-              d[,i] <- d[,i]/(n.sd*sd(d[,i], na.rm = TRUE))
+
+              d[[i]] <- d[[i]] / (n.sd*sd(d[[i]], na.rm = TRUE))
+
             } else if (center.only == TRUE && scale.only == TRUE) {
+
               stop("You cannot set both center.only and scale.only to TRUE.")
+
             }
           } else {
 
             if (center.only == FALSE && scale.only == FALSE) {
-              d[,i] <- ((d[,i]-weighted.mean(d[,i], weights))/(n.sd*wtd.sd(d[,i], weights)))
+
+              d[[i]] <- ((d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)) /
+                           (n.sd*wtd.sd(d[[i]], weights)))
+
             } else if (center.only == TRUE && scale.only == FALSE) {
-              d[,i] <- d[,i]-weighted.mean(d[,i], weights)
+
+              d[[i]] <- d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)
+
             } else if (center.only == FALSE && scale.only == TRUE) {
-              d[,i] <- d[,i]/(n.sd*wtd.sd(d[,i], weights))
+
+              d[[i]] <- d[[i]] / (n.sd*wtd.sd(d[[i]], weights))
+
             } else if (center.only == TRUE && scale.only == TRUE) {
+
               stop("You cannot set both center.only and scale.only to TRUE.")
+
             }
           }
 
         }
+
       } else {
 
         # support for weights, though fairly clunky
         if (is.null(weights)) {
           if (center.only == FALSE && scale.only == FALSE) {
-            d[,i] <- ((d[,i]-mean(d[,i], na.rm = TRUE))/(n.sd*sd(d[,i], na.rm = TRUE)))
+
+            d[[i]] <- ((d[[i]] - mean(d[[i]], na.rm = TRUE)) /
+                         (n.sd*sd(d[[i]], na.rm = TRUE)))
+
           } else if (center.only == TRUE && scale.only == FALSE) {
-            d[,i] <- d[,i]-mean(d[,i], na.rm = TRUE)
+
+            d[[i]] <- d[[i]] - mean(d[[i]], na.rm = TRUE)
+
           } else if (center.only == FALSE && scale.only == TRUE) {
-            d[,i] <- d[,i]/(n.sd*sd(d[,i], na.rm = TRUE))
+
+            d[[i]] <- d[[i]] / (n.sd*sd(d[[i]], na.rm = TRUE))
+
           } else if (center.only == TRUE && scale.only == TRUE) {
+
             stop("You cannot set both center.only and scale.only to TRUE.")
+
           }
+
         } else {
 
           if (center.only == FALSE && scale.only == FALSE) {
-            d[,i] <- ((d[,i]-weighted.mean(d[,i], weights))/(n.sd*wtd.sd(d[,i], weights)))
+
+            d[[i]] <- ((d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)) /
+                         (n.sd*wtd.sd(d[[i]], weights)))
+
           } else if (center.only == TRUE && scale.only == FALSE) {
-            d[,i] <- d[,i]-weighted.mean(d[,i], weights)
+
+            d[[i]] <- d[[i]] - weighted.mean(d[[i]], weights, na.rm = TRUE)
+
           } else if (center.only == FALSE && scale.only == TRUE) {
-            d[,i] <- d[,i]/(n.sd*wtd.sd(d[,i], weights))
+
+            d[[i]] <- d[[i]] / (n.sd*wtd.sd(d[[i]], weights))
+
           } else if (center.only == TRUE && scale.only == TRUE) {
+
             stop("You cannot set both center.only and scale.only to TRUE.")
+
           }
         }
 
@@ -459,69 +591,87 @@ if (is.numeric(x)) {
     # Just calling rescale
     for (i in x) {
 
-      if ((!is.numeric(d[,i]) & length(unique(d[,i])) != 2) || all(is.na(d[,i]))) {
+      if ((!is.numeric(d[[i]]) & length(unique(d[[i]])) != 2) || all(is.na(d[[i]]))) {
         # just skip over non-numeric variables
         # columns that are all NA will still show up as numeric
-        if (all(is.na(d[,i]))) {
+        if (all(is.na(d[[i]]))) {
           message <- paste("All values of", i, "were NA. Skipping...\n")
           warning(message)
         }
       } else {
 
       # Dealing with two-level factors
-      if (length(unique(d[,i])) == 2 && is.factor(d[,i])) {
-        d[,i] <- as.numeric(d[,i]) - 1
+      if (length(unique(d[[i]])) == 2 && is.factor(d[[i]])) {
+        d[[i]] <- as.numeric(d[[i]]) - 1
       } # Now it will follow the logic of any numeric binary var
 
       # for binary cases
-      if (length(unique(d[,i])) == 2) {
+      if (length(unique(d[[i]])) == 2) {
 
         if (binary.inputs == "0/1") {
 
-          d[,i] <- (d[,i]-min(d[,i]))/(max(d[,i])-min(d[,i]))
+          d[[i]] <- (d[[i]] - min(d[[i]])) / (max(d[[i]]) - min(d[[i]]))
 
-        } else if (binary.inputs=="-0.5/0.5") {
+        } else if (binary.inputs == "-0.5/0.5") {
 
-          d[,i] <- (d[,i] - 0.5)
+          d[[i]] <- (d[[i]] - min(d[[i]])) / (max(d[[i]]) - min(d[[i]]))
+          d[[i]] <- d[[i]] - 0.5
 
         } else if (binary.inputs == "center") {
 
-          d[,i] <- (d[,i] - survey::svymean(as.formula(paste("~", i, sep = "")),
-                                            design = design, na.rm = TRUE))
+          d[[i]] <- d[[i]] - survey::svymean(as.formula(paste("~", i, sep = "")),
+                                            design = design, na.rm = TRUE)[1]
 
-        } else if (binary.inputs=="full") {
+        } else if (binary.inputs == "full") {
 
-          numerator <- d[,i] - survey::svymean(as.formula(paste("~", i, sep = "")),
-                                               design = design, na.rm = TRUE)
+          numerator <- d[[i]] - survey::svymean(as.formula(paste("~", i, sep = "")),
+                                               design = design, na.rm = TRUE)[1]
+
           denominator <- n.sd * svysd(as.formula(paste("~",  i, sep = "")),
-                                                    design = design, na.rm = TRUE)
+                                                    design = design, na.rm = TRUE)[1]
 
           if (center.only == FALSE && scale.only == FALSE) {
-            d[,i] <-  numerator/denominator
+
+            d[[i]] <- numerator/denominator
+
           } else if (center.only == TRUE && scale.only == FALSE) {
-            d[,i] <- numerator
+
+            d[[i]] <- numerator
+
           } else if (center.only == FALSE && scale.only == TRUE) {
-            d[,i] <- d[,i]/denominator
+
+            d[[i]] <- d[[i]]/denominator
+
           } else if (center.only == TRUE && scale.only == TRUE) {
+
             stop("You cannot set both center.only and scale.only to TRUE.")
+
           }
 
         }
       } else {
 
-        numerator <- d[,i] - survey::svymean(as.formula(paste("~", i, sep = "")),
+        numerator <- d[[i]] - survey::svymean(as.formula(paste("~", i, sep = "")),
                                              design = design, na.rm = TRUE)
         denominator <- n.sd * svysd(as.formula(paste("~",  i, sep = "")),
                                                   design = design, na.rm = TRUE)
 
         if (center.only == FALSE && scale.only == FALSE) {
-          d[,i] <-  numerator/denominator
+
+          d[[i]] <-  numerator/denominator
+
         } else if (center.only == TRUE && scale.only == FALSE) {
-          d[,i] <- numerator
+
+          d[[i]] <- numerator
+
         } else if (center.only == FALSE && scale.only == TRUE) {
-          d[,i] <- d[,i]/denominator
+
+          d[[i]] <- d[[i]]/denominator
+
         } else if (center.only == TRUE && scale.only == TRUE) {
+
           stop("You cannot set both center.only and scale.only to TRUE.")
+
         }
 
       }
@@ -562,70 +712,91 @@ if (is.numeric(x)) {
         # I need its actual name for the svymean() commands
         i <- names(d)[i]
 
-        if ((!is.numeric(d[,i]) & length(unique(d[,i])) != 2) || all(is.na(d[,i]))) {
+        if ((!is.numeric(d[[i]]) & length(unique(d[[i]])) != 2) || all(is.na(d[[i]]))) {
           # just skip over non-numeric variables
           # columns that are all NA will still show up as numeric
-          if (all(is.na(d[,i]))) {
+          if (all(is.na(d[[i]]))) {
+
             message <- paste("All values of", i, "were NA. Skipping...\n")
             warning(message)
+
           }
+
         } else {
 
           # Dealing with two-level factors
-          if (length(unique(d[,i])) == 2 && is.factor(d[,i])) {
-            d[,i] <- as.numeric(d[,i]) - 1
+          if (length(unique(d[[i]])) == 2 && is.factor(d[[i]])) {
+
+            d[[i]] <- as.numeric(d[[i]]) - 1
             design$variables <- d
+
           } # Now it will follow the logic of any numeric binary var
 
           # for binary cases
-          if (length(unique(d[,i])) == 2) {
+          if (length(unique(d[[i]])) == 2) {
 
             if (binary.inputs=="0/1") {
 
-              d[,i] <- (d[,i]-min(d[,i]))/(max(d[,i])-min(d[,i]))
+              d[[i]] <- (d[[i]] - min(d[[i]])) / (max(d[[i]]) - min(d[[i]]))
 
             } else if (binary.inputs=="-0.5/0.5") {
 
-              d[,i] <- (d[,i]-0.5)
+              d[[i]] <- d[[i]] - 0.5
 
             } else if (binary.inputs=="center") {
 
-              d[,i] <- (d[,i] - survey::svymean(as.formula(paste("~", i, sep = "")),
-                                                design = design, na.rm = TRUE))
+              d[[i]] <- d[[i]] - survey::svymean(as.formula(paste("~", i, sep = "")),
+                                                design = design, na.rm = TRUE)[1]
 
             } else if (binary.inputs=="full") {
 
-              numerator <- d[,i] - survey::svymean(as.formula(paste("~", i, sep = "")),
-                                                   design = design, na.rm = TRUE)
+              numerator <- d[[i]] - survey::svymean(as.formula(paste("~", i, sep = "")),
+                                                   design = design, na.rm = TRUE)[1]
               denominator <- n.sd * svysd(as.formula(paste("~",  i, sep = "")),
-                                                        design = design, na.rm = TRUE)
+                                                        design = design, na.rm = TRUE)[1]
 
               if (center.only == FALSE && scale.only == FALSE) {
-                d[,i] <-  numerator/denominator
+
+                d[[i]] <-  numerator/denominator
+
               } else if (center.only == TRUE && scale.only == FALSE) {
-                d[,i] <- numerator
+
+                d[[i]] <- numerator
+
               } else if (center.only == FALSE && scale.only == TRUE) {
-                d[,i] <- d[,i]/denominator
+
+                d[[i]] <- d[[i]]/denominator
+
               } else if (center.only == TRUE && scale.only == TRUE) {
+
                 stop("You cannot set both center.only and scale.only to TRUE.")
+
               }
 
             }
           } else {
 
-            numerator <- d[,i] - survey::svymean(as.formula(paste("~", i, sep = "")),
+            numerator <- d[[i]] - survey::svymean(as.formula(paste("~", i, sep = "")),
                                                            design = design, na.rm = TRUE)
             denominator <- n.sd * svysd(as.formula(paste("~",  i, sep = "")),
                                                       design = design, na.rm = TRUE)
 
             if (center.only == FALSE && scale.only == FALSE) {
-              d[,i] <-  numerator/denominator
+
+              d[[i]] <-  numerator/denominator
+
             } else if (center.only == TRUE && scale.only == FALSE) {
-              d[,i] <- numerator
+
+              d[[i]] <- numerator
+
             } else if (center.only == FALSE && scale.only == TRUE) {
-              d[,i] <- d[,i]/denominator
+
+              d[[i]] <- d[[i]] / denominator
+
             } else if (center.only == TRUE && scale.only == TRUE) {
+
               stop("You cannot set both center.only and scale.only to TRUE.")
+
             }
 
           }
