@@ -1,3 +1,48 @@
+## jtools 0.7.3
+
+Important bugfix:
+
+* When standardize was set to TRUE using summ, the model was not mean-centered
+as the output stated. This has been fixed. I truly regret the error---double-check
+any analyses you may have run with this feature.
+
+New function: `export_summs`. 
+
+This function outputs regression models supported
+by summ in table formats useful for RMarkdown output as well as specific options
+for exporting to Microsoft Word files. This is particularly helpful for those
+wanting an efficient way to export regressions that are standardized and/or use
+robust standard errors. 
+
+
+## jtools 0.7.2
+
+The documentation for j_summ has been reorganized such that each supported
+model type has its own, separate documentation. `?j_summ` will now just give you
+links to each supported model type.
+
+More importantly, j_summ will from now on be referred to as, simply, summ. 
+Your old code is fine; j_summ will now be an alias for summ and will run the 
+same underlying code. Documentation will refer to the summ function, though.
+That includes the updated vignette.
+
+One new feature for summ.lm:
+
+* With the `part.corr = TRUE` argument for a linear model, partial and 
+semipartial correlations for each variable are reported.
+
+More tweaks to summ.merMod:
+
+* Default behavior with regard to p values depends on model type (lmer vs.
+glmer/nlmer) and, in the case of linear models, whether the `pbkrtest` package
+is installed. If it is, p values are calculated based on the Kenward-Roger
+degrees of freedom calculation and printed. Otherwise, p values are not 
+shown by default with lmer models. P values are shown with glmer models, since
+that is also the default behavior of `lme4`.
+* There is an `r.squared` option, which for now is FALSE by default. It adds
+runtime since it must fit a null model for comparison and sometimes this also
+causes convergence issues.
+
 ## jtools 0.7.1
 
 Returning to CRAN!

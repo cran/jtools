@@ -12,7 +12,7 @@
 
 <meta name="author" content="Jacob Long" />
 
-<meta name="date" content="2017-09-15" />
+<meta name="date" content="2017-10-01" />
 
 <title>Calculate correlations and correlation tables with complex survey data</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Calculate correlations and correlation tables with complex survey data</h1>
 <h4 class="author"><em>Jacob Long</em></h4>
-<h4 class="date"><em>2017-09-15</em></h4>
+<h4 class="date"><em>2017-10-01</em></h4>
 
 
 
@@ -85,8 +85,8 @@ dstrat &lt;-<span class="st"> </span><span class="kw">svydesign</span>(<span cla
 <p>The necessary arguments are no different than when using <code>svyvar</code>. Specify, using an equation, which variables (and from which design) to include. It doesn’t matter which side of the equation the variables are on.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</code></pre></div>
 <pre><code>##       api00 api99
-## api00            
-## api99</code></pre>
+## api00  1.00  0.98
+## api99  0.98  1.00</code></pre>
 <p>You can specify with the <code>digits =</code> argument how many digits past the decimal point should be printed.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>)</code></pre></div>
 <pre><code>##        api00  api99
@@ -116,8 +116,8 @@ c<span class="op">$</span>cors</code></pre></div>
 ## api99     0     0</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">c<span class="op">$</span>std.err</code></pre></div>
 <pre><code>##             api00       api99
-## api00 0.000000000 0.003626892
-## api99 0.003626892 0.000000000</code></pre>
+## api00 0.000000000 0.003508861
+## api99 0.003508861 0.000000000</code></pre>
 </div>
 <div id="technical-details" class="section level2">
 <h2>Technical details</h2>
