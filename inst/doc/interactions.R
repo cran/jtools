@@ -4,10 +4,10 @@ library(jtools)
 
 ## ------------------------------------------------------------------------
 fiti <- lm(Income ~ Illiteracy*Murder, data = as.data.frame(state.x77))
-j_summ(fiti)
+summ(fiti)
 
 ## ------------------------------------------------------------------------
-j_summ(fiti, standardize = TRUE)
+summ(fiti, standardize = TRUE)
 
 ## ------------------------------------------------------------------------
 sim_slopes(fiti, pred = Illiteracy, modx = Murder, johnson_neyman = FALSE)

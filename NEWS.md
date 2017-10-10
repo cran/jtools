@@ -1,4 +1,31 @@
-## jtools 0.7.3
+## jtools 0.8.0 (CRAN release)
+
+Not many user-facing changes since 0.7.4, but major refactoring internally
+should speed things up and make future development smoother.
+
+## jtools 0.7.4
+
+Bugfixes:
+
+* interact_plot and effect_plot would trip up when one of the focal predictors
+had a name that was a subset of a covariate (e.g., pred = "var" but a covariate
+is called "var_2"). That's fixed.
+* Confidence intervals for merMod objects were not respecting the user-requested
+confidence level and that has been fixed.
+* Confidence intervals for merMod objects were throwing a
+spurious warning on R 3.4.2.
+* interact_plot was mis-ordering secondary moderators. That has been fixed.
+* export_summs had a major performance problem when providing extra arguments
+which may have also caused it to wrongly ignore some arguments. That has been 
+fixed and it is much faster.
+
+Enhancements:
+* interact_plot now gives more informative labels for secondary moderators when
+the user has defined the values but not the labels.
+* confidence intervals are now properly supported with export_summs
+* changes made to export_summs for compatibility with huxtable 1.0.0 changes
+
+## jtools 0.7.3 (CRAN release)
 
 Important bugfix:
 
