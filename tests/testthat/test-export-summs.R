@@ -24,6 +24,8 @@ talent <- counts*.5 + rnorm(50, sd = 3)
 poisdat <- as.data.frame(cbind(exposures, counts, talent, money))
 pmod <- glm(counts ~ talent*money, offset = log(exposures), data = poisdat,
             family = poisson)
+pmod_a <- glm(counts ~ talent*money, offset = log(exposures), data = poisdat,
+            family = poisson)
 
 library(lme4, quietly = TRUE)
 data(VerbAgg)
@@ -37,7 +39,7 @@ test_that("Export doesn't fail with lm", {
 })
 
 test_that("Export accepts summ args with lm", {
-  expect_is(export_summs(fit,fit2,fitw, standardize = T, robust = T),
+  expect_is(export_summs(fit,fit2,fitw, scale = T, robust = T),
             "huxtable")
 })
 
@@ -56,7 +58,7 @@ test_that("Export doesn't fail with glm", {
 })
 
 test_that("Export accepts summ args with glm", {
-  expect_is(export_summs(pmod, standardize = T, robust = T),
+  expect_is(export_summs(pmod, scale = T, robust = T),
             "huxtable")
 })
 
@@ -75,7 +77,7 @@ test_that("Export doesn't fail with svyglm", {
 })
 
 test_that("Export accepts summ args with svyglm", {
-  expect_is(export_summs(regmodel, standardize = T),
+  expect_is(export_summs(regmodel, scale = T),
             "huxtable")
 })
 
@@ -87,7 +89,7 @@ test_that("Export accepts huxreg args with svyglm", {
 
 test_that("Export accepts huxreg and summ args with svyglm", {
   expect_is(export_summs(regmodel, pad_decimal = ",",
-                         standardize = T), "huxtable")
+                         scale = T), "huxtable")
 })
 
 test_that("Export doesn't fail with merMod", {
@@ -95,7 +97,7 @@ test_that("Export doesn't fail with merMod", {
 })
 
 test_that("Export accepts summ args with merMod", {
-  expect_is(export_summs(mv, standardize = T),
+  expect_is(export_summs(mv, scale = T),
             "huxtable")
 })
 
@@ -106,7 +108,7 @@ test_that("Export accepts huxreg args with merMod", {
 
 test_that("Export accepts huxreg and summ args with merMod", {
   expect_is(export_summs(mv, pad_decimal = ",",
-                         standardize = T), "huxtable")
+                         scale = T), "huxtable")
 })
 
 test_that("Export can do confidence intervals (merMod)", {
@@ -130,4 +132,92 @@ test_that("Export can do confidence intervals (svyglm)", {
   expect_is(export_summs(regmodel,
                          error_format = "95% CI [{conf.low}, {conf.high}]"),
             "huxtable")
+})
+
+test_that("Export can take manual coefficient names", {
+  expect_is(export_summs(fit,fit2,fitw,
+                         coefs = c("HS Grad %" = "HSGrad",
+                          "Murder Rate" = "Murder")), "huxtable")
+})
+
+#### plot_summs ############################################################
+
+test_that("plot_summs doesn't fail with lm", {
+  expect_is(p <- plot_summs(fit,fit2,fitw), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs accepts summ args with lm", {
+  expect_is(p <- plot_summs(fit,fit2,fitw, scale = T, robust = T),
+   "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs works with glm", {
+  expect_is(p <- plot_summs(pmod, pmod_a), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs accepts summ args with glm", {
+  expect_is(p <- plot_summs(pmod, pmod_a, scale = T, robust = T),
+   "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs accepts odds ratios with glm", {
+  expect_is(p <- plot_summs(pmod, pmod_a, scale = T, robust = T),
+   "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs works with svyglm", {
+  expect_is(p <- plot_summs(regmodel), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs accepts summ args with svyglm", {
+  expect_is(p <- plot_summs(regmodel, scale = T), "ggplot")
+  expect_silent(print(p))
+})
+
+# The message expected is the "calculating confidence intervals..." from lme4
+test_that("plot_summs works with lmer", {
+  expect_is(p <- plot_summs(mv), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs accepts summ args with lmer", {
+  expect_is(p <- plot_summs(mv, scale = T), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs can take manual coefficient names", {
+  expect_is(p <- plot_summs(fit,fit2,fitw,
+                         coefs = c("HS Grad %" = "HSGrad",
+                          "Murder Rate" = "Murder")), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_summs can omit coefficients", {
+  expect_is(p <- plot_summs(fit,fit2,fitw,
+                         coefs = c("HSGrad","Murder")), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_coefs can take manual coefficient names", {
+  expect_is(p <- plot_coefs(fit,fit2,fitw,
+                         coefs = c("HS Grad %" = "HSGrad",
+                          "Murder Rate" = "Murder")), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_coefs can omit coefficients", {
+  expect_is(p <- plot_coefs(fit,fit2,fitw,
+                         coefs = c("HSGrad","Murder")), "ggplot")
+  expect_silent(print(p))
+})
+
+test_that("plot_coefs works", {
+  expect_is(p <- plot_coefs(fit, pmod), "ggplot")
+  expect_silent(print(p))
 })

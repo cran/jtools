@@ -4,11 +4,12 @@
 \alias{effect_plot}
 \title{Plot simple effects in regression models}
 \usage{
-effect_plot(model, pred, centered = NULL, standardize = FALSE, n.sd = 1,
+effect_plot(model, pred, centered = NULL, scale = FALSE, n.sd = 1,
   plot.points = FALSE, interval = FALSE, int.type = c("confidence",
   "prediction"), int.width = 0.95, outcome.scale = "response",
   set.offset = 1, x.label = NULL, y.label = NULL, pred.labels = NULL,
-  main.title = NULL, color.class = NULL, line.thickness = 1.1)
+  main.title = NULL, color.class = NULL, line.thickness = 1.1,
+  jitter = 0.1, standardize = NULL)
 }
 \arguments{
 \item{model}{A regression model of type \code{lm}, \code{glm},
@@ -17,24 +18,27 @@ other classes may work as well but are not officially supported.}
 
 \item{pred}{The name of the predictor variable you want on the x-axis.}
 
-\item{centered}{A vector of quoted variable names that are to be mean-centered.
+\item{centered}{A vector of quoted variable names that are to be
+mean-centered.
 If \code{NULL}, all non-focal predictors are centered. If not \code{NULL},
 only the user-specified predictors are centered. User can also use "none"
 or "all" arguments. The response variable is not centered unless specified
 directly.}
 
-\item{standardize}{Logical. Would you like to standardize the variables
+\item{scale}{Logical. Would you like to standardize the variables
 that are centered? Default is \code{FALSE}, but if \code{TRUE} it will
 standardize variables specified by the \code{centered} argument. Note that
-non-focal predictors are centered when \code{centered = NULL}, its default.}
+non-focal predictors are centered when \code{centered = NULL}, its
+default.}
 
-\item{n.sd}{How many standard deviations should be used if \code{standardize
+\item{n.sd}{How many standard deviations should be used if \code{scale
 = TRUE}? Default is 1, but some prefer 2.}
 
 \item{plot.points}{Logical. If \code{TRUE}, plots the actual data points as a
 scatterplot on top of the interaction lines.}
 
-\item{interval}{Logical. If \code{TRUE}, plots confidence/prediction intervals
+\item{interval}{Logical. If \code{TRUE}, plots confidence/prediction
+intervals
 the line using \code{\link[ggplot2]{geom_ribbon}}. Not supported for
 \code{merMod} models.}
 
@@ -76,36 +80,49 @@ plot. If \code{NULL}, no main title is used.}
 
 \item{line.thickness}{How thick should the plotted lines be? Default is 1.1;
 ggplot's default is 1.}
+
+\item{jitter}{How much should \code{plot.points} observed values be "jittered"
+via \code{\link[ggplot2:position_jitter]{ggplot2::position_jitter()}}? When there are many points near each
+other, jittering moves them a small amount to keep them from
+totally overlapping. In some cases, though, it can add confusion since
+it may make points appear to be outside the boundaries of observed
+values or cause other visual issues. Default is 0.1, but set to 0 if
+you want no jittering.}
+
+\item{standardize}{Deprecated. Equivalent to \code{scale}. Please change your
+scripts to use \code{scale} instead as this argument will be removed in the
+future.}
 }
 \value{
-The functions returns a \code{ggplot} object, which can be treated like
-  a user-created plot and expanded upon as such.
+The functions returns a \code{ggplot} object, which can be treated
+like
+a user-created plot and expanded upon as such.
 }
 \description{
 \code{effect_plot()} plots regression paths. The plotting is done with
- \code{ggplot2} rather than base graphics, which some similar functions use.
+\code{ggplot2} rather than base graphics, which some similar functions use.
 }
 \details{
 This function provides a means for plotting effects for the
-  purpose of exploring regression estimates. You must have the
-  package \code{ggplot2} installed to benefit from these plotting functions.
+purpose of exploring regression estimates. You must have the
+package \code{ggplot2} installed to benefit from these plotting functions.
 
-  By default, all numeric predictors other than the one specified in the
-  \code{pred} argument are mean-centered, which usually produces more
-  intuitive plots. This only affects the y-axis in linear models, but
-  maybe especially important/influential in non-linear/generalized linear
-  models.
+By default, all numeric predictors other than the one specified in the
+\code{pred} argument are mean-centered, which usually produces more
+intuitive plots. This only affects the y-axis in linear models, but
+maybe especially important/influential in non-linear/generalized linear
+models.
 
-  This function supports nonlinear and generalized linear models and by
-  default will plot them on
-  their original scale (\code{outcome.scale = "response"}).
+This function supports nonlinear and generalized linear models and by
+default will plot them on
+their original scale (\code{outcome.scale = "response"}).
 
-  While mixed effects models from \code{lme4} are supported, only the fixed
-  effects are plotted. \code{lme4} does not provide confidence intervals,
-  so they are not supported with this function either.
+While mixed effects models from \code{lme4} are supported, only the fixed
+effects are plotted. \code{lme4} does not provide confidence intervals,
+so they are not supported with this function either.
 
-  Note: to use transformed predictors, e.g., \code{log(variable)},
-  put its name in quotes or backticks in the argument.
+Note: to use transformed predictors, e.g., \code{log(variable)},
+put its name in quotes or backticks in the argument.
 }
 \examples{
 # Using a fitted lm model
@@ -116,22 +133,24 @@ fit <- lm(Income ~ HSGrad + Murder,
 effect_plot(model = fit, pred = Murder)
 
 # Using interval feature
-fit <- lm(accel ~ mag + dist, data=attenu)
+fit <- lm(accel ~ mag + dist, data = attenu)
 effect_plot(fit, pred = mag, interval = TRUE,
   int.type = "confidence", int.width = .8)
 
 # With svyglm
 library(survey)
 data(api)
-dstrat <- svydesign(id=~1,strata=~stype, weights=~pw, data=apistrat, fpc=~fpc)
-regmodel <- svyglm(api00~ell + meals, design = dstrat)
+dstrat <- svydesign(id = ~1, strata = ~stype, weights = ~pw,
+                    data = apistrat, fpc = ~fpc)
+regmodel <- svyglm(api00 ~ ell + meals, design = dstrat)
 effect_plot(regmodel, pred = ell, interval = TRUE)
 
 # With lme4
 \dontrun{
 library(lme4)
 data(VerbAgg)
-mv <- glmer(r2 ~ Anger + mode + (1 | item), data = VerbAgg, family = binomial,
+mv <- glmer(r2 ~ Anger + mode + (1 | item), data = VerbAgg,
+            family = binomial,
             control = glmerControl("bobyqa"))
 effect_plot(mv, pred = Anger)
 }
@@ -139,8 +158,8 @@ effect_plot(mv, pred = Anger)
 }
 \seealso{
 \code{\link[jtools]{interact_plot}} plots interaction effects,
-  producing plots like this function but with separate lines for different
-  levels of a moderator.
+producing plots like this function but with separate lines for different
+levels of a moderator.
 }
 \author{
 Jacob Long <\email{long.1377@osu.edu}>

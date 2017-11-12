@@ -1,8 +1,8 @@
 #' Plot interaction effects in regression models
 #'
-#' \code{interact_plot()} plots regression lines at user-specified levels of a moderator
-#' variable to explore interactions. The plotting is done with \code{ggplot2} rather than
-#' base graphics, which some similar functions use.
+#' \code{interact_plot()} plots regression lines at user-specified levels of a
+#'  moderator variable to explore interactions. The plotting is done with
+#'  \code{ggplot2} rather than base graphics, which some similar functions use.
 #'
 #' @param model A regression model of type \code{lm}, \code{glm},
 #'   \code{\link[survey]{svyglm}}, or \code{\link[lme4]{merMod}}. It should
@@ -24,40 +24,44 @@
 #'   moderators. If the moderator is a factor variable and \code{modxvals} is
 #'   \code{NULL}, each level of the factor is included. If
 #'   \code{"plus-minus"}, plots lines when the moderator is at +/- 1 standard
-#'   deviation without the mean.
+#'   deviation without the mean. You may also choose `"terciles"` to split
+#'   the data into equally-sized groups and choose the point at the mean of
+#'   each of those groups.
 #'
 #' @param mod2vals For which values of the second moderator should the plot be
 #'   facetted by? That is, there will be a separate plot for each level of this
 #'   moderator. Defaults are the same as \code{modxvals}.
 #'
-#' @param centered A vector of quoted variable names that are to be mean-centered. If
-#'   \code{NULL}, all non-focal predictors are centered. If not \code{NULL}, only
-#'   the user-specified predictors are centered. User can also use "none" or "all"
-#'   arguments. The response variable is not centered unless specified directly.
+#' @param centered A vector of quoted variable names that are to be
+#'   mean-centered. If \code{NULL}, all non-focal predictors are centered. If
+#'   not \code{NULL}, only the user-specified predictors are centered. User can
+#'   also use "none" or "all" arguments. The response variable is not centered
+#'   unless specified directly.
 #'
-#' @param standardize Logical. Would you like to standardize the variables
+#' @param scale Logical. Would you like to standardize the variables
 #'   that are centered? Default is \code{FALSE}, but if \code{TRUE} it will
 #'   standardize variables specified by the \code{centered} argument. Note that
-#'   non-focal predictors are centered when \code{centered = NULL}, its default.
+#'   non-focal predictors are centered when \code{centered = NULL}, its
+#'   default.
 #'
-#' @param n.sd How many standard deviations should be used if \code{standardize
+#' @param n.sd How many standard deviations should be used if \code{scale
 #'   = TRUE}? Default is 1, but some prefer 2.
 #'
 #' @param plot.points Logical. If \code{TRUE}, plots the actual data points as a
-#'   scatterplot on top of the interaction lines. If moderator is a factor, the dots
-#'   will be the same color as their parent factor.
+#'   scatterplot on top of the interaction lines. The color of the dots will be
+#'   based on their moderator value.
 #'
-#' @param interval Logical. If \code{TRUE}, plots confidence/prediction intervals
-#'   the line using \code{\link[ggplot2]{geom_ribbon}}. Not supported for
-#'   \code{merMod} models.
+#' @param interval Logical. If \code{TRUE}, plots confidence/prediction
+#'   intervals around the line using \code{\link[ggplot2]{geom_ribbon}}. Not
+#'   supported for \code{merMod} models.
 #'
-#' @param int.type Type of interval to plot. Options are "confidence" or "prediction".
-#'   Default is confidence interval.
+#' @param int.type Type of interval to plot. Options are "confidence" or
+#'  "prediction". Default is confidence interval.
 #'
-#' @param int.width How large should the interval be, relative to the standard error?
-#'   The default, .95, corresponds to roughly 1.96 standard errors and a .05 alpha
-#'   level for values outside the range. In other words, for a confidence interval,
-#'   .95 is analogous to a 95\% confidence interval.
+#' @param int.width How large should the interval be, relative to the standard
+#'   error? The default, .95, corresponds to roughly 1.96 standard errors and
+#'   a .05 alpha level for values outside the range. In other words, for a
+#'   confidence interval, .95 is analogous to a 95\% confidence interval.
 #'
 #' @param outcome.scale For nonlinear models (i.e., GLMs), should the outcome
 #'   variable be plotted on the link scale (e.g., log odds for logit models) or
@@ -66,50 +70,73 @@
 #'   scale, which will show straight lines rather than curves, use
 #'   \code{"link"}.
 #'
+#' @param linearity.check For two-way interactions only. If `TRUE`, plots a
+#'   pane for each level of the moderator and superimposes a loess smoothed
+#'   line (in gray) over the plot. This enables you to see if the effect is
+#'   linear through the span of the moderator. See Hainmuller et al. (2016) in
+#'   the references for more details on the intuition behind this. It is
+#'   recommended that you also set `plot.points = TRUE` and use
+#'   `modxvals = "terciles"` with this option.
+#'
 #' @param set.offset For models with an offset (e.g., Poisson models), sets a
 #'   offset for the predicted values. All predicted values will have the same
 #'   offset. By default, this is set to 1, which makes the predicted values a
 #'   proportion. See details for more about offset support.
 #'
-#' @param x.label A character object specifying the desired x-axis label. If \code{NULL},
-#'   the variable name is used.
+#' @param x.label A character object specifying the desired x-axis label. If
+#'   \code{NULL}, the variable name is used.
 #'
-#' @param y.label A character object specifying the desired x-axis label. If \code{NULL},
-#'   the variable name is used.
+#' @param y.label A character object specifying the desired x-axis label. If
+#'   \code{NULL}, the variable name is used.
 #'
 #' @param pred.labels A character vector of 2 labels for the predictor if it is
-#'   a 2-level factor or a continuous variable with only 2 values. If \code{NULL},
-#'   the default, the factor labels are used.
+#'   a 2-level factor or a continuous variable with only 2 values. If
+#'   \code{NULL}, the default, the factor labels are used.
 #'
-#' @param modx.labels A character vector of labels for each level of the moderator values,
-#'   provided in the same order as the \code{modxvals} argument. If \code{NULL},
-#'   the values themselves are used as labels unless \code{modxvals} is also \code{NULL}.
-#'   In that case, "+1 SD" and "-1 SD" are used.
+#' @param modx.labels A character vector of labels for each level of the
+#'   moderator values, provided in the same order as the \code{modxvals}
+#'   argument. If \code{NULL}, the values themselves are used as labels unless
+#'   \code{modxvals} is also \code{NULL}. In that case, "+1 SD" and "-1 SD"
+#'   are used.
 #'
-#' @param mod2.labels A character vector of labels for each level of the 2nd moderator
-#'   values, provided in the same order as the \code{mod2vals} argument. If \code{NULL},
-#'   the values themselves are used as labels unless \code{mod2vals} is also \code{NULL}.
-#'   In that case, "+1 SD" and "-1 SD" are used.
+#' @param mod2.labels A character vector of labels for each level of the 2nd
+#'   moderator values, provided in the same order as the \code{mod2vals}
+#'   argument. If \code{NULL}, the values themselves are used as labels unless
+#'   \code{mod2vals} is also \code{NULL}. In that case, "+1 SD" and "-1 SD"
+#'   are used.
 #'
-#' @param main.title A character object that will be used as an overall title for the
-#'   plot. If \code{NULL}, no main title is used.
+#' @param main.title A character object that will be used as an overall title
+#'   for the plot. If \code{NULL}, no main title is used.
 #'
-#' @param legend.main A character object that will be used as the title that appears
-#'   above the legend. If \code{NULL}, the name of the moderating variable is used.
+#' @param legend.main A character object that will be used as the title that
+#'   appears above the legend. If \code{NULL}, the name of the moderating
+#'   variable is used.
 #'
 #' @param color.class Any palette argument accepted by
-#'   \code{\link[ggplot2]{scale_colour_brewer}}. Default is "Set2" for factor moderators,
-#'   "Blues" for +/- SD and user-specified \code{modxvals} values.
+#'   \code{\link[ggplot2]{scale_colour_brewer}}. Default is "Set2" for factor
+#'    moderators, "Blues" for +/- SD and user-specified \code{modxvals} values.
 #'
 #' @param line.thickness How thick should the plotted lines be? Default is 1.1;
 #'   ggplot's default is 1.
 #'
-#' @param vary.lty Should the resulting plot have different shapes for each line
-#'   in addition to colors? Defaults to \code{TRUE}.
+#' @param vary.lty Should the resulting plot have different shapes for each
+#'   line in addition to colors? Defaults to \code{TRUE}.
 #'
+#' @param jitter How much should `plot.points` observed values be "jittered"
+#'    via [ggplot2::position_jitter()]? When there are many points near each
+#'    other, jittering moves them a small amount to keep them from
+#'    totally overlapping. In some cases, though, it can add confusion since
+#'    it may make points appear to be outside the boundaries of observed
+#'    values or cause other visual issues. Default is 0.1, but set to 0 if
+#'    you want no jittering.
 #'
-#' @details This function provides a means for plotting conditional effects for the
-#'   purpose of exploring interactions in the context of regression. You must have the
+#' @param standardize Deprecated. Equivalent to `scale`. Please change your
+#'  scripts to use `scale` instead as this argument will be removed in the
+#'  future.
+#'
+#' @details This function provides a means for plotting conditional effects
+#'   for the purpose of exploring interactions in the context of regression.
+#'   You must have the
 #'   package \code{ggplot2} installed to benefit from these plotting functions.
 #'
 #'   The function is designed for two and three-way interactions. For
@@ -126,6 +153,38 @@
 #'
 #'   Note: to use transformed predictors, e.g., \code{log(variable)},
 #'   put its name in quotes or backticks in the argument.
+#'
+#'   \emph{Details on how observed data are split in multi-pane plots}:
+#'
+#'   If you set `plot.points = TRUE` and request a multi-pane (facetted) plot
+#'   either with a second moderator or `linearity.check = TRUE`, the observed
+#'   data are split into as many groups as there  are panes and plotted
+#'   separately. If the moderator is a factor, then the way this happens will
+#'   be very intuitive since it's obvious which values go in which pane. The
+#'   rest of this section will address the case of continuous moderators.
+#'
+#'   My recommendation is that you use `modxvals = "terciles"` or
+#'   `mod2vals = "terciles"` when you want to plot observed data on multi-pane
+#'   plots. When you do, the data are split into three approximately
+#'   equal-sized groups with the lowest third, middle third, and highest third
+#'   of the data split accordingly. You can replicate this procedure using
+#'   [Hmisc::cut2()] with `g = 3` from the `Hmisc` package. Sometimes, the
+#'   groups will not be equal in size because the number of observations is
+#'   not divisible by 3 and/or there are multiple observations with the same
+#'   value at one of the cut points.
+#'
+#'   Otherwise, a more ad hoc procedure is used to split the data. Quantiles
+#'   are found for each `mod2vals` or `modxvals` value. These are not the
+#'   quantiles used to split the data, however, since we want the plotted lines
+#'   to represent the slope at a typical value in the group. The next step,
+#'   then, is to take the mean of each pair of neighboring quantiles and use
+#'   these as the cut points.
+#'
+#'   For example, if the `mod2vals` are at the 25th, 50th, and 75th percentiles
+#'   of the distribution of the moderator, the data will be split at the
+#'   37.5th and and 62.5th percentiles. When the variable is
+#'   normally distributed, this will correspond fairly closely to using
+#'   terciles.
 #'
 #'   \emph{Info about offsets:}
 #'
@@ -144,8 +203,8 @@
 #'   if you apply no transformation at all, the exposures used will be the
 #'   post-tranformation number (which is by default 1).
 #'
-#' @return The functions returns a \code{ggplot} object, which can be treated like
-#'   a user-created plot and expanded upon as such.
+#' @return The functions returns a \code{ggplot} object, which can be treated
+#'   like a user-created plot and expanded upon as such.
 #'
 #' @author Jacob Long <\email{long.1377@@osu.edu}>
 #'
@@ -161,31 +220,39 @@
 #'
 #' @references
 #'
-#' Bauer, D. J., & Curran, P. J. (2005). Probing interactions in fixed and multilevel
-#'  regression: Inferential and graphical techniques. \emph{Multivariate Behavioral
+#' Bauer, D. J., & Curran, P. J. (2005). Probing interactions in fixed and
+#'  multilevel regression: Inferential and graphical techniques.
+#'  \emph{Multivariate Behavioral
 #'  Research}, \emph{40}(3), 373-400.
 #'  \url{http://dx.doi.org/10.1207/s15327906mbr4003_5}
 #'
-#' Cohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003). \emph{Applied multiple
+#' Cohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003). \emph{Applied
+#' multiple
 #' regression/correlation analyses for the behavioral sciences} (3rd ed.).
 #' Mahwah, NJ: Lawrence Erlbaum Associates, Inc.
+#'
+#' Hainmueller, J., Mummolo, J., & Xu, Y. (2016). How much should we trust
+#'   estimates from multiplicative interaction models? Simple tools to improve
+#'   empirical practice. SSRN Electronic Journal.
+#'   \url{https://doi.org/10.2139/ssrn.2739221}
+
 #'
 #' @examples
 #' # Using a fitted lm model
 #' states <- as.data.frame(state.x77)
 #' states$HSGrad <- states$`HS Grad`
-#' fit <- lm(Income ~ HSGrad + Murder*Illiteracy,
+#' fit <- lm(Income ~ HSGrad + Murder * Illiteracy,
 #'   data = states)
 #' interact_plot(model = fit, pred = Murder,
 #'   modx = Illiteracy)
 #'
 #' # Using interval feature
-#' fit <- lm(accel ~ mag*dist, data=attenu)
+#' fit <- lm(accel ~ mag * dist, data = attenu)
 #' interact_plot(fit, pred = mag, modx = dist, interval = TRUE,
 #'   int.type = "confidence", int.width = .8)
 #'
 #' # Using second moderator
-#' fit <- lm(Income ~ HSGrad*Murder*Illiteracy,
+#' fit <- lm(Income ~ HSGrad * Murder * Illiteracy,
 #'   data = states)
 #' interact_plot(model = fit, pred = Murder,
 #'   modx = Illiteracy, mod2 = HSGrad)
@@ -193,34 +260,39 @@
 #' # With svyglm
 #' library(survey)
 #' data(api)
-#' dstrat <- svydesign(id=~1,strata=~stype, weights=~pw, data=apistrat, fpc=~fpc)
-#' regmodel <- svyglm(api00~ell*meals,design=dstrat)
+#' dstrat <- svydesign(id = ~1, strata = ~stype, weights = ~pw,
+#'                     data = apistrat, fpc = ~fpc)
+#' regmodel <- svyglm(api00 ~ ell * meals, design = dstrat)
 #' interact_plot(regmodel, pred = ell, modx = meals)
 #'
 #' # With lme4
 #' \dontrun{
 #' library(lme4)
 #' data(VerbAgg)
-#' mv <- glmer(r2 ~ Anger * mode + (1 | item), data = VerbAgg, family = binomial,
+#' mv <- glmer(r2 ~ Anger * mode + (1 | item), data = VerbAgg,
+#'             family = binomial,
 #'             control = glmerControl("bobyqa"))
 #' interact_plot(mv, pred = Anger, modx = mode)
 #' }
 #'
 #' @importFrom stats coef coefficients lm predict sd qnorm getCall model.offset
-#' @importFrom stats median
+#' @importFrom stats median ecdf quantile
+#' @import ggplot2
 #' @export interact_plot
 
 interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
-                          mod2vals = NULL, centered = NULL, standardize = FALSE,
+                          mod2vals = NULL, centered = NULL, scale = FALSE,
                           n.sd = 1, plot.points = FALSE, interval = FALSE,
                           int.type = c("confidence","prediction"),
                           int.width = .95, outcome.scale = "response",
+                          linearity.check = FALSE,
                           set.offset = 1,
                           x.label = NULL, y.label = NULL,
                           pred.labels = NULL, modx.labels = NULL,
                           mod2.labels = NULL, main.title = NULL,
                           legend.main = NULL, color.class = NULL,
-                          line.thickness = 1.1, vary.lty = TRUE) {
+                          line.thickness = 1.1, vary.lty = TRUE,
+                          jitter = 0.1, standardize = NULL) {
 
   # Evaluate the modx, mod2, pred args
   pred <- as.character(substitute(pred))
@@ -229,6 +301,13 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   # To avoid unexpected behavior, need to un-un-parse mod2 when it is NULL
   if (length(mod2) == 0) {
     mod2 <- NULL
+  }
+
+  # Check for deprecated argument
+  if (!is.null(standardize)) {
+    warning("The standardize argument is deprecated. Please use 'scale'",
+      " instead.")
+    scale <- standardize
   }
 
   # Duplicating the dataframe so it can be manipulated as needed
@@ -240,6 +319,8 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     mixed <- FALSE
     design <- model$survey.design
     d <- design$variables
+
+    wts <- weights(design) # for use with points.plot aesthetic
 
     # Focal vars so the weights don't get centered
     fvars <- as.character(attributes(terms(model))$variables)
@@ -260,7 +341,8 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
       mixed <- TRUE
       if (interval == TRUE) {
-        warning("Confidence intervals cannot be provided for random effects models.")
+        warning("Confidence intervals cannot be provided for random effects",
+                " models.")
         interval <- FALSE
       }
 
@@ -296,7 +378,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
     weights <- FALSE
     wname <- NULL
-    wts <- rep(1, times = nrow(d))
+    if (survey == FALSE) {wts <- rep(1, times = nrow(d))}
 
   }
 
@@ -304,7 +386,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   if (!is.null(model.offset(model.frame(model)))) {
 
     off <- TRUE
-    offname <- as.character(getCall(model)$offset[-1]) # subset gives bare varname
+    offname <- as.character(getCall(model)$offset[-1]) # subset gives bare name
 
     # Getting/setting offset name depending on whether it was specified in
     # argument or formula
@@ -357,7 +439,8 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     }
     # Unrelated, but good place to throw a warning
     if (!is.null(modxvals)) {
-      warning("All levels of factor must be used. Ignoring modxvals argument...")
+      warning("All levels of factor must be used. Ignoring modxvals",
+              " argument...")
       modxvals <- NULL
     }
   } else {
@@ -390,7 +473,7 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
                        resp = resp, modx = modx, survey = survey,
                        design = design, mod2 = mod2, wname = wname,
                        offname = offname, centered = centered,
-                       standardize = standardize, n.sd = n.sd)
+                       scale = scale, n.sd = n.sd)
 
   design <- c_out$design
   d <- c_out$d
@@ -425,9 +508,72 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     predfac <- TRUE
   } else if (is.factor(d[,pred]) & length(unique(d[,pred] != 2))) {
     # I could assume the factor is properly ordered, but that's too risky
-    stop("Focal predictor (\"pred\") cannot have more than two levels. Either use it as modx or convert it to a continuous or single dummy variable.")
+    stop("Focal predictor (\"pred\") cannot have more than two levels. Either",
+         " use it as modx or convert it to a continuous or single dummy",
+         " variable.")
   } else {
     predfac <- FALSE
+  }
+
+### Prep original data for splitting into groups ##############################
+
+  # Only do this if going to plot points
+  if ((!is.null(mod2) | linearity.check == TRUE) & !is.factor(d[[modx]]) &
+      plot.points == TRUE) {
+
+    # Use ecdf function to get quantile of the modxvals
+    mod_val_qs <- ecdf(d[[modx]])(sort(modxvals2))
+
+    # Now I am going to split the data in a way that roughly puts each modxval
+    # in the middle of each group. mod_val_qs is a vector of quantiles for each
+    # modxval, so I will now build a vector of the midpoint between each
+    # neighboring pair of quantiles — they will become the cutpoints for
+    # splitting the data into groups that roughly correspond to the modxvals
+    cut_points <- c() # empty vector
+    # Iterate to allow this to work regardless of number of modxvals
+    for (i in 1:(length(modxvals2) - 1)) {
+
+      cut_points <- c(cut_points, mean(mod_val_qs[i:(i + 1)]))
+
+    }
+
+    # Add Inf to both ends to encompass all values outside the cut points
+    cut_points <- c(-Inf, quantile(d[[modx]], cut_points), Inf)
+
+    # Create variable storing this info as a factor
+    d$modx_group <- cut(d[[modx]], cut_points, labels = names(sort(modxvals2)))
+
+    if (!is.null(modxvals) && modxvals == "terciles") {
+      d$modx_group <- factor(cut2(d[[modx]], g = 3, levels.mean = TRUE),
+                             labels = c("Lower tercile", "Middle tercile",
+                                        "Upper tercile"))
+    }
+
+  }
+
+  if (!is.null(mod2) && !is.factor(d[[mod2]]) & plot.points == TRUE) {
+
+    mod_val_qs <- ecdf(d[[mod2]])(sort(mod2vals2))
+
+
+    cut_points2 <- c()
+    for (i in 1:(length(mod2vals2) - 1)) {
+
+      cut_points2 <- c(cut_points2, mean(mod_val_qs[i:(i + 1)]))
+
+    }
+
+    cut_points2 <- c(-Inf, quantile(d[[mod2]], cut_points2), Inf)
+
+    d$mod2_group <- cut(d[[mod2]], cut_points2, labels = names(sort(mod2vals2)))
+
+    if (!is.null(mod2vals) && mod2vals == "terciles") {
+      d$mod2_group <- factor(cut2(d[[mod2]], g = 3, levels.mean = TRUE),
+                             labels = c(paste("Lower tercile of", mod2),
+                                        paste("Middle tercile of", mod2),
+                                        paste("Upper tercile of", mod2)))
+    }
+
   }
 
 #### Creating predicted frame #################################################
@@ -470,23 +616,25 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
   # Creating matrix for use in predict()
   if (interval == TRUE) { # Only create SE columns if intervals needed
     if (is.null(mod2)) {
-      pm <- matrix(rep(0, 100*(nc + 2)*length(modxvals2)), ncol = (nc + 2))
+      pm <- matrix(rep(0, 100 * (nc + 2) * length(modxvals2)), ncol = (nc + 2))
     } else {
-      pm <- matrix(rep(0, (nc + 2)*length(facs)), ncol = (nc + 2))
+      pm <- matrix(rep(0, (nc + 2) * length(facs)), ncol = (nc + 2))
     }
   } else {
     if (is.null(mod2)) {
-      pm <- matrix(rep(0, 100*(nc)*length(modxvals2)), ncol = nc)
+      pm <- matrix(rep(0, 100 * nc * length(modxvals2)), ncol = nc)
     } else {
-      pm <- matrix(rep(0, (nc)*length(facs)), ncol = nc)
+      pm <- matrix(rep(0, nc * length(facs)), ncol = nc)
     }
   }
 
   # Naming columns
   if (interval == TRUE) { # if intervals, name the SE columns
-    colnames(pm) <- c(colnames(d),"ymax","ymin")
+    colnames(pm) <- c(colnames(d)[colnames(d) %nin%
+                                    c("modx_group","mod2_group")],
+                      "ymax", "ymin")
   } else {
-    colnames(pm) <- colnames(d)
+    colnames(pm) <- colnames(d)[colnames(d) %nin% c("modx_group","mod2_group")]
   }
   # Convert to dataframe
   pm <- as.data.frame(pm)
@@ -615,12 +763,19 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
   # Labels for values of moderator
   pm[,modx] <- factor(pm[,modx], levels = modxvals2, labels = modx.labels)
-
+  pm$modx_group <- pm[,modx]
 
   # Setting labels for second moderator
   if (!is.null(mod2)) {
 
     pm[,mod2] <- factor(pm[,mod2], levels = mod2vals2, labels = mod2.labels)
+
+    # Setting mod2 in OG data to the factor if plot.points == TRUE
+    if (plot.points == TRUE) {
+
+      d[[mod2]] <- d$mod2_group
+
+    }
 
   }
 
@@ -638,61 +793,81 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
 
   if (is.null(mod2)) {
     colors <- rev(colors)
+    pp_color <- first(colors) # Darkest color used for plotting points
+  } else {
+    pp_color <- last(colors)
   }
 
   names(colors) <- modx.labels
 
   # Defining linetype here
   if (vary.lty == TRUE) {
-    p <- ggplot2::ggplot(pm, ggplot2::aes(x = pm[,pred], y = pm[,resp],
-                                          colour = pm[,modx],
-                                          group = pm[,modx],
-                                          linetype = pm[,modx]))
+    p <- ggplot(pm, aes_string(x = pred, y = resp, colour = modx,
+                               group = modx, linetype = modx))
   } else {
-    p <- ggplot2::ggplot(pm, ggplot2::aes(x = pm[,pred], y = pm[,resp],
-                                          colour = pm[,modx],
-                                          group = pm[,modx]))
+    p <- ggplot(pm, aes_string(x = pred, y = resp, colour = modx,
+                               group = modx))
   }
 
-  # Define line thickness
-  p <- p + ggplot2::geom_path(size = line.thickness)
+  p <- p + geom_path(size = line.thickness)
 
   # Plot intervals if requested
   if (interval == TRUE) {
-    p <- p + ggplot2::geom_ribbon(data = pm, ggplot2::aes(ymin = pm[,"ymin"],
-                                                        ymax = pm[,"ymax"],
-                                                        fill = pm[,modx],
-                                                        group = pm[,modx],
-                                                        colour = pm[,modx],
-                                                        linetype = NA
-                                                        ),
+    p <- p + geom_ribbon(aes_string(ymin = "ymin", ymax = "ymax",
+                                    fill = modx, group = modx,
+                                    colour = modx, linetype = NA),
                                   alpha = 1/5, show.legend = FALSE)
     if (facmod == TRUE) {
-      p <- p + ggplot2::scale_fill_brewer(palette = color.class)
+      p <- p + scale_fill_brewer(palette = color.class)
     } else {
-      p <- p + ggplot2::scale_fill_manual(values = colors,
-                                          breaks = levels(pm[,modx]))
+      p <- p + scale_fill_manual(values = colors,
+                                 breaks = levels(pm[,modx]))
     }
   }
 
   # If third mod, facet by third mod
   if (!is.null(mod2)) {
-    p <- p + ggplot2::facet_grid(. ~ pm[,mod2])
+    facets <- facet_grid(paste(". ~", mod2))
+    p <- p + facets
+  } else if (linearity.check == TRUE) {
+    facets <- facet_grid(paste(". ~ modx_group"))
+    p <- p + facets + stat_smooth(data = d, aes_string(x = pred, y = resp),
+                                  method = "loess", size = 1,
+                                  show.legend = FALSE, inherit.aes = FALSE,
+                                  se = FALSE, span = 2, geom = "line",
+                                  alpha = 0.5, color = "black")
   }
 
   # For factor vars, plotting the observed points
   # and coloring them by factor looks great
-  if (plot.points==TRUE && is.factor(d[,modx])) {
-    p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x = d[,pred],
-                                                      y = d[,resp],
-                                                      colour = d[,modx]),
-                                 position = "jitter", inherit.aes = F,
-                                 show.legend = F)
-  } else if (plot.points == TRUE && !is.factor(d[,modx])) {
-    # otherwise just black points
-    p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x = d[,pred],
-                                                      y = d[,resp]),
-                                 inherit.aes = F, position = "jitter")
+  if (plot.points == TRUE) {
+    # Transform weights so they have mean = 1
+    const <- length(wts)/sum(wts) # scaling constant
+    const <- const * 2 # make the range of values larger
+    wts <- const * wts
+    # Append weights to data
+    d[,"the_weights"] <- wts
+
+    if (is.factor(d[,modx])) {
+      p <- p + geom_point(data = d, aes_string(x = pred, y = resp,
+                          colour = modx, size = "the_weights"),
+               position = position_jitter(width = jitter, height = jitter),
+               inherit.aes = FALSE, show.legend = FALSE)
+    } else if (!is.factor(d[,modx])) {
+      # using alpha for same effect with continuous vars
+      p <- p + geom_point(data = d,
+                          aes_string(x = pred, y = resp, alpha = modx,
+                                    size = "the_weights"),
+                          colour = pp_color, inherit.aes = FALSE,
+                          position = position_jitter(width = jitter,
+                                                     height = jitter),
+                          show.legend = FALSE) +
+          scale_alpha_continuous(range = c(0.25, 1), guide = "none")
+    }
+
+    # Add size aesthetic to avoid giant points
+    p <- p + scale_size_identity()
+
   }
 
   # Using theme_apa for theming...but using legend title and side positioning
@@ -703,56 +878,52 @@ interact_plot <- function(model, pred, modx, modxvals = NULL, mod2 = NULL,
     p <- p + theme_apa(legend.pos = "bottom", legend.use.title = TRUE,
                        facet.title.size = 10)
   }
-  p <- p + ggplot2::labs(x = x.label, y = y.label) # better labels for axes
+  p <- p + labs(x = x.label, y = y.label) # better labels for axes
 
   # Getting rid of tick marks for factor predictor
   if (predfac == TRUE) {
     if (is.null(pred.labels)) { # Let pred.labels override factor labels
-      p <- p + ggplot2::scale_x_continuous(breaks = c(0,1), labels = predlabs)
+      p <- p + scale_x_continuous(breaks = c(0,1), labels = predlabs)
     } else { # Use the factor labels
-      p <- p + ggplot2::scale_x_continuous(breaks = c(0,1),
-                                           labels = pred.labels)
+      p <- p + scale_x_continuous(breaks = c(0,1), labels = pred.labels)
     }
   } else if (length(unique(d[,pred])) == 2) {
     # Predictor has only two unique values
     # Make sure those values are in increasing order
     brks <- sort(unique(d[,pred]), decreasing = F)
     if (is.null(pred.labels)) {
-      p <- p + ggplot2::scale_x_continuous(breaks = brks)
+      p <- p + scale_x_continuous(breaks = brks)
     } else {
       if (length(pred.labels) == 2) { # Make sure pred.labels has right length
-        p <- p + ggplot2::scale_x_continuous(breaks = brks,
-                                             labels = pred.labels)
+        p <- p + scale_x_continuous(breaks = brks, labels = pred.labels)
       } else {
         warning("pred.labels argument has the wrong length. It won't be used")
-        p <- p + ggplot2::scale_x_continuous(breaks = brks)
+        p <- p + scale_x_continuous(breaks = brks)
       }
     }
   }
 
   # Get scale colors, provide better legend title
   if (facmod == TRUE) {
-    p <- p + ggplot2::scale_colour_brewer(name = legend.main,
-                                          palette = color.class)
+    p <- p + scale_colour_brewer(name = legend.main, palette = color.class)
   } else {
-    p <- p + ggplot2::scale_colour_manual(name = legend.main,
-                                          values = colors, breaks = pm[,modx])
+    p <- p + scale_colour_manual(name = legend.main, values = colors,
+                                 breaks = pm[,modx])
   }
 
-  if (vary.lty == TRUE) {# Add line-specific changes
+  if (vary.lty == TRUE) { # Add line-specific changes
     if (facmod == FALSE) {
-      p <- p + ggplot2::scale_linetype_discrete(name = legend.main,
-                                                breaks = pm[,modx])
+      p <- p + scale_linetype_discrete(name = legend.main, breaks = pm[,modx])
     } else {
-      p <- p + ggplot2::scale_linetype_discrete(name = legend.main)
+      p <- p + scale_linetype_discrete(name = legend.main)
     }
     # Need some extra width to show the linetype pattern fully
-    p <- p + ggplot2::theme(legend.key.width = grid::unit(2, "lines"))
+    p <- p + theme(legend.key.width = grid::unit(2, "lines"))
   }
 
   # Give the plot the user-specified title if there is one
-  if (!is.null(main.title)){
-    p <- p + ggplot2::ggtitle(main.title)
+  if (!is.null(main.title)) {
+    p <- p + ggtitle(main.title)
   }
 
   # Return the plot
@@ -781,24 +952,27 @@ print.interact_plot <- function(x, ...) {
 #'
 #' @param pred The name of the predictor variable you want on the x-axis.
 #'
-#' @param centered A vector of quoted variable names that are to be mean-centered.
+#' @param centered A vector of quoted variable names that are to be
+#'   mean-centered.
 #'   If \code{NULL}, all non-focal predictors are centered. If not \code{NULL},
 #'   only the user-specified predictors are centered. User can also use "none"
 #'   or "all" arguments. The response variable is not centered unless specified
 #'   directly.
 #'
-#' @param standardize Logical. Would you like to standardize the variables
+#' @param scale Logical. Would you like to standardize the variables
 #'   that are centered? Default is \code{FALSE}, but if \code{TRUE} it will
 #'   standardize variables specified by the \code{centered} argument. Note that
-#'   non-focal predictors are centered when \code{centered = NULL}, its default.
+#'   non-focal predictors are centered when \code{centered = NULL}, its
+#'   default.
 #'
-#' @param n.sd How many standard deviations should be used if \code{standardize
+#' @param n.sd How many standard deviations should be used if \code{scale
 #'   = TRUE}? Default is 1, but some prefer 2.
 #'
 #' @param plot.points Logical. If \code{TRUE}, plots the actual data points as a
 #'   scatterplot on top of the interaction lines.
 #'
-#' @param interval Logical. If \code{TRUE}, plots confidence/prediction intervals
+#' @param interval Logical. If \code{TRUE}, plots confidence/prediction
+#'   intervals
 #'   the line using \code{\link[ggplot2]{geom_ribbon}}. Not supported for
 #'   \code{merMod} models.
 #'
@@ -841,6 +1015,18 @@ print.interact_plot <- function(x, ...) {
 #' @param line.thickness How thick should the plotted lines be? Default is 1.1;
 #'   ggplot's default is 1.
 #'
+#' @param jitter How much should `plot.points` observed values be "jittered"
+#'    via [ggplot2::position_jitter()]? When there are many points near each
+#'    other, jittering moves them a small amount to keep them from
+#'    totally overlapping. In some cases, though, it can add confusion since
+#'    it may make points appear to be outside the boundaries of observed
+#'    values or cause other visual issues. Default is 0.1, but set to 0 if
+#'    you want no jittering.
+#'
+#' @param standardize Deprecated. Equivalent to `scale`. Please change your
+#'  scripts to use `scale` instead as this argument will be removed in the
+#'  future.
+#'
 #'
 #' @details This function provides a means for plotting effects for the
 #'   purpose of exploring regression estimates. You must have the
@@ -863,7 +1049,8 @@ print.interact_plot <- function(x, ...) {
 #'   Note: to use transformed predictors, e.g., \code{log(variable)},
 #'   put its name in quotes or backticks in the argument.
 #'
-#' @return The functions returns a \code{ggplot} object, which can be treated like
+#' @return The functions returns a \code{ggplot} object, which can be treated
+#'   like
 #'   a user-created plot and expanded upon as such.
 #'
 #' @author Jacob Long <\email{long.1377@@osu.edu}>
@@ -881,38 +1068,50 @@ print.interact_plot <- function(x, ...) {
 #' effect_plot(model = fit, pred = Murder)
 #'
 #' # Using interval feature
-#' fit <- lm(accel ~ mag + dist, data=attenu)
+#' fit <- lm(accel ~ mag + dist, data = attenu)
 #' effect_plot(fit, pred = mag, interval = TRUE,
 #'   int.type = "confidence", int.width = .8)
 #'
 #' # With svyglm
 #' library(survey)
 #' data(api)
-#' dstrat <- svydesign(id=~1,strata=~stype, weights=~pw, data=apistrat, fpc=~fpc)
-#' regmodel <- svyglm(api00~ell + meals, design = dstrat)
+#' dstrat <- svydesign(id = ~1, strata = ~stype, weights = ~pw,
+#'                     data = apistrat, fpc = ~fpc)
+#' regmodel <- svyglm(api00 ~ ell + meals, design = dstrat)
 #' effect_plot(regmodel, pred = ell, interval = TRUE)
 #'
 #' # With lme4
 #' \dontrun{
 #' library(lme4)
 #' data(VerbAgg)
-#' mv <- glmer(r2 ~ Anger + mode + (1 | item), data = VerbAgg, family = binomial,
+#' mv <- glmer(r2 ~ Anger + mode + (1 | item), data = VerbAgg,
+#'             family = binomial,
 #'             control = glmerControl("bobyqa"))
 #' effect_plot(mv, pred = Anger)
 #' }
 #'
 #' @importFrom stats coef coefficients lm predict sd qnorm getCall model.offset
-#' @importFrom stats median
+#' @importFrom stats median weights
+#' @import ggplot2
 #' @export effect_plot
 
-effect_plot <- function(model, pred, centered = NULL, standardize = FALSE,
+effect_plot <- function(model, pred, centered = NULL, scale = FALSE,
                         n.sd = 1, plot.points = FALSE, interval = FALSE,
                         int.type = c("confidence","prediction"),
                         int.width = .95, outcome.scale = "response",
                         set.offset = 1,
                         x.label = NULL, y.label = NULL,
                         pred.labels = NULL, main.title = NULL,
-                        color.class = NULL, line.thickness = 1.1) {
+                        color.class = NULL, line.thickness = 1.1,
+                        jitter = 0.1,
+                        standardize = NULL) {
+
+  # Check for deprecated argument
+  if (!is.null(standardize)) {
+    warning("The standardize argument is deprecated. Please use 'scale'",
+      " instead.")
+    scale <- standardize
+  }
 
   # Evaluate the modx, mod2, pred args
   pred <- as.character(substitute(pred))
@@ -926,6 +1125,8 @@ effect_plot <- function(model, pred, centered = NULL, standardize = FALSE,
     mixed <- FALSE
     design <- model$survey.design
     d <- design$variables
+
+    wts <- weights(design) # for use with points.plot aesthetic
 
     # Focal vars so the weights don't get centered
     fvars <- as.character(attributes(terms(model))$variables)
@@ -982,7 +1183,7 @@ effect_plot <- function(model, pred, centered = NULL, standardize = FALSE,
 
     weights <- FALSE
     wname <- NULL
-    wts <- rep(1, times = nrow(d))
+    if (survey == FALSE) {wts <- rep(1, times = nrow(d))}
 
   }
 
@@ -1047,7 +1248,7 @@ effect_plot <- function(model, pred, centered = NULL, standardize = FALSE,
   resp <- sub("(.*)(?=~).*", x = formula, perl = TRUE, replacement = "\\1")
   resp <- trimws(resp)
 
-  ### Centering ##################################################################
+### Centering ##################################################################
 
   # Update facvars by pulling out all non-focals
   facvars <-
@@ -1059,7 +1260,7 @@ effect_plot <- function(model, pred, centered = NULL, standardize = FALSE,
                        resp = resp, modx = NULL, survey = survey,
                        design = design, mod2 = NULL, wname = wname,
                        offname = offname, centered = centered,
-                       standardize = standardize, n.sd = n.sd)
+                       scale = scale, n.sd = n.sd)
 
   design <- c_out$design
   d <- c_out$d
@@ -1137,7 +1338,8 @@ effect_plot <- function(model, pred, centered = NULL, standardize = FALSE,
     message(msg)
   }
 
-  # Back-ticking variable names in formula to prevent problems with transformed preds
+  # Back-ticking variable names in formula to prevent problems with
+  # transformed preds
   formc <- as.character(deparse(formula(model)))
   for (var in all.vars) {
 
@@ -1216,64 +1418,77 @@ effect_plot <- function(model, pred, centered = NULL, standardize = FALSE,
   }
 
   # Saving x-axis label
-  if (is.null(x.label)){
+  if (is.null(x.label)) {
     x.label <- pred
   }
 
   # Saving y-axis label
-  if (is.null(y.label)){
+  if (is.null(y.label)) {
     y.label <- resp
   }
 
+#### Plotting #################################################################
+
   # Starting plot object
-  p <- ggplot2::ggplot(pm, ggplot2::aes(x=pm[,pred], y=pm[,resp]))
+  p <- ggplot(pm, aes_string(x = pred, y = resp))
 
   # Define line thickness
-  p <- p + ggplot2::geom_path(size = line.thickness)
+  p <- p + geom_path(size = line.thickness)
 
   # Plot intervals if requested
-  if (interval==TRUE) {
-    p <- p + ggplot2::geom_ribbon(data=pm, ggplot2::aes(ymin=pm[,"ymin"],
-                                                        ymax=pm[,"ymax"]),
-                                  alpha=1/5, show.legend = FALSE)
+  if (interval == TRUE) {
+    p <- p + geom_ribbon(data = pm, aes_string(ymin = "ymin",
+                                               ymax = "ymax"),
+                         alpha = 1/5, show.legend = FALSE)
   }
 
-  # Plotting the observed points
+  # Plot observed data
   if (plot.points == TRUE) {
-    p <- p + ggplot2::geom_point(data=d, ggplot2::aes(x=d[,pred], y=d[,resp]),
-                                 inherit.aes = F, position = "jitter")
+    # Transform weights so they have mean = 1
+    const <- length(wts)/sum(wts) # scaling constant
+    const <- const * 2 # make the range of values larger
+    wts <- const * wts
+    # Append weights to data
+    d[,"the_weights"] <- wts
+      p <- p + geom_point(data = d,
+                          aes_string(x = pred, y = resp, size = "the_weights"),
+               position = position_jitter(width = jitter, height = jitter),
+               inherit.aes = FALSE, show.legend = FALSE)
+    # Add size aesthetic to avoid giant points
+    # p <- p + scale_size(range = c(0.3, 4))
+    p <- p + scale_size_identity()
   }
 
   # Using theme_apa for theming...but using legend title and side positioning
   p <- p + theme_apa(legend.pos = "right", legend.use.title = TRUE)
 
-  p <- p + ggplot2::labs(x = x.label, y = y.label) # better labels for axes
+  p <- p + labs(x = x.label, y = y.label) # better labels for axes
 
   # Getting rid of tick marks for factor predictor
   if (predfac == TRUE) {
     if (is.null(pred.labels)) { # Let pred.labels override factor labels
-      p <- p + ggplot2::scale_x_continuous(breaks = c(0,1), labels = predlabs)
+      p <- p + scale_x_continuous(breaks = c(0,1), labels = predlabs)
     } else { # Use the factor labels
-      p <- p + ggplot2::scale_x_continuous(breaks = c(0,1), labels = pred.labels)
+      p <- p + scale_x_continuous(breaks = c(0,1), labels = pred.labels)
     }
   } else if (length(unique(d[,pred])) == 2) { # Predictor has only two unique values
     # Make sure those values are in increasing order
     brks <- sort(unique(d[,pred]), decreasing = F)
     if (is.null(pred.labels)) {
-      p <- p + ggplot2::scale_x_continuous(breaks = brks)
+      p <- p + scale_x_continuous(breaks = brks)
     } else {
       if (length(pred.labels) == 2) { # Make sure pred.labels has right length
-        p <- p + ggplot2::scale_x_continuous(breaks = brks, labels = pred.labels)
+        p <- p + scale_x_continuous(breaks = brks, labels = pred.labels)
       } else {
         warning("pred.labels argument has the wrong length. It won't be used")
-        p <- p + ggplot2::scale_x_continuous(breaks = brks)
+        p <- p + scale_x_continuous(breaks = brks)
       }
     }
   }
 
   # Give the plot the user-specified title if there is one
   if (!is.null(main.title)) {
-    p <- p + ggplot2::ggtitle(main.title)
+    p <- p + ggtitle(main.title)
   }
 
   # Return the plot
@@ -1285,4 +1500,714 @@ effect_plot <- function(model, pred, centered = NULL, standardize = FALSE,
 
 print.effect_plot <- function(x, ...) {
   print(x)
+}
+
+##### Categorical plot #######################################################
+
+#' Plot interaction effects between categorical predictors.
+#'
+#' `cat_plot` is a complementary function to [interact_plot()] that is designed
+#' for plotting interactions when both predictor and moderator(s) are
+#' categorical (or, in R terms, factors).
+#'
+#' @param pred A categorical predictor variable that will appear on the x-axis.
+#' @param modx A categorical moderator variable.
+#' @param mod2 For three-way interactions, the second categorical moderator.
+#'
+#' @param geom What type of plot should this be? There are several options
+#'   here since the best way to visualize categorical interactions varies by
+#'   context. Here are the options:
+#'
+#'   * `"dot"`: The default. Simply plot the point estimates. You may want to
+#'      use
+#'     `point.shape = TRUE` with this and you should also consider
+#'     `interval = TRUE` to visualize uncertainty.
+#'
+#'   * `"line"`: This connects observations across levels of the `pred`
+#'     variable with a line. This is a good option when the `pred` variable
+#'     is ordinal (ordered). You may still consider `point.shape = TRUE` and
+#'     `interval = TRUE` is still a good idea.
+#'
+#'   * `"bar"`: A bar chart. Some call this a "dynamite plot."
+#'     Many applied researchers advise against this type of plot because it
+#'     does not represent the distribution of the observed data or the
+#'     uncertainty of the predictions very well. It is best to at least use the
+#'     `interval = TRUE` argument with this geom.
+#'
+#'   * `"boxplot"`: This geom plots a dot and whisker plot. These can be useful
+#'     for understanding the distribution of the observed data without having
+#'     to plot all the observed points (especially helpful with larger data
+#'     sets). **However**, it is important to note the boxplots are not based
+#'     on the model whatsoever.
+#'
+#' @param interval Logical. If \code{TRUE}, plots confidence/prediction
+#'   intervals. Not supported for \code{merMod} models.
+#'
+#' @param plot.points Logical. If \code{TRUE}, plots the actual data points as a
+#'   scatterplot on top of the interaction lines. Note that if
+#'   `geom = "bar"`, this will cause the bars to become transparent so you can
+#'   see the points.
+#'
+#' @param point.shape For plotted points---either of observed data or predicted
+#'   values with the "point" or "line" geoms---should the shape of the points
+#'   vary by the values of the factor? This is especially useful if you aim to
+#'   be black and white printing- or colorblind-friendly.
+#'
+#' @param color.class Any palette argument accepted by
+#'   \code{\link[ggplot2]{scale_colour_brewer}}. Default is "Set2" for factor
+#'    moderators.
+#'
+#' @inheritParams interact_plot
+#'
+#' @details This function provides a means for plotting conditional effects
+#'   for the purpose of exploring interactions in the context of regression.
+#'   You must have the
+#'   package \code{ggplot2} installed to benefit from these plotting functions.
+#'
+#'   The function is designed for two and three-way interactions. For
+#'   additional terms, the
+#'   \code{\link[effects]{effects}} package may be better suited to the task.
+#'
+#'   This function supports nonlinear and generalized linear models and by
+#'   default will plot them on
+#'   their original scale (\code{outcome.scale = "response"}).
+#'
+#'   While mixed effects models from \code{lme4} are supported, only the fixed
+#'   effects are plotted. \code{lme4} does not provide confidence intervals,
+#'   so they are not supported with this function either.
+#'
+#'   Note: to use transformed predictors, e.g., \code{log(variable)},
+#'   put its name in quotes or backticks in the argument.
+#'
+#'   \emph{Info about offsets:}
+#'
+#'   Offsets are partially supported by this function with important
+#'   limitations. First of all, only a single offset per model is supported.
+#'   Second, it is best in general to specify offsets with the offset argument
+#'   of the model fitting function rather than in the formula. If it is
+#'   specified in the formula with a svyglm, this function will stop with an
+#'   error message.
+#'
+#'   It is also advised not to do any transformations to the offset other than
+#'   the common log transformation. If you apply a log transform, this function
+#'   will deal with it sensibly. So if your offset is a logged count, the
+#'   exposure you set will be the non-logged version, which is much easeir to
+#'   wrap one's head around. For any other transformation you may apply, or
+#'   if you apply no transformation at all, the exposures used will be the
+#'   post-tranformation number (which is by default 1).
+#'
+#' @return The functions returns a \code{ggplot} object, which can be treated
+#'   like a user-created plot and expanded upon as such.
+#'
+#' @family interaction tools
+#'
+#' @examples
+#'
+#' library(ggplot2)
+#' fit <- lm(price ~ cut * color, data = diamonds)
+#' cat_plot(fit, pred = color, modx = cut, interval = TRUE)
+#'
+#' # 3-way interaction
+#'
+#' ## Will first create a couple dichotomous factors to ensure full rank
+#' mpg2 <- mpg
+#' mpg2$auto <- "auto"
+#' mpg2$auto[mpg2$trans %in% c("manual(m5)", "manual(m6)")] <- "manual"
+#' mpg2$fwd <- "2wd"
+#' mpg2$fwd[mpg2$drv == "4"] <- "4wd"
+#' ## Drop the two cars with 5 cylinders (rest are 4, 6, or 8)
+#' mpg2 <- mpg2[mpg2$cyl != "5",]
+#' ## Fit the model
+#' fit3 <- lm(cty ~ cyl * fwd * auto, data = mpg2)
+#'
+#' # The line geom looks good for an ordered factor predictor
+#' cat_plot(fit3, pred = cyl, modx = fwd, mod2 = auto, geom = "line",
+#'  interval = TRUE)
+#'
+#' @importFrom stats coef coefficients lm predict sd qnorm getCall model.offset
+#' @importFrom stats median
+#' @export cat_plot
+#' @import ggplot2
+#'
+
+cat_plot <- function(model, pred, modx = NULL, mod2 = NULL,
+                     geom = c("dot","line","bar","boxplot"),
+                     interval = TRUE, plot.points = FALSE,
+                     point.shape = FALSE, vary.lty = FALSE,
+                     centered = NULL,
+                     int.type = c("confidence","prediction"),
+                     int.width = .95, outcome.scale = "response",
+                     set.offset = 1, x.label = NULL, y.label = NULL,
+                     main.title = NULL, legend.main = NULL,
+                     color.class = "Set2") {
+
+  # Legacy commands from interact_plot
+  scale <- FALSE
+  n.sd <- 1
+
+  # Evaluate the modx, mod2, pred args
+  pred <- as.character(substitute(pred))
+  modx <- as.character(substitute(modx))
+  # To avoid unexpected behavior, need to un-un-parse modx when it is NULL
+  if (length(modx) == 0) {
+    modx <- NULL
+  }
+  mod2 <- as.character(substitute(mod2))
+  # To avoid unexpected behavior, need to un-un-parse mod2 when it is NULL
+  if (length(mod2) == 0) {
+    mod2 <- NULL
+  }
+
+  # Get the geom if not specified
+  geom <- geom[1]
+  if (geom == "point") {geom <- "dot"}
+
+  # Duplicating the dataframe so it can be manipulated as needed
+  d <- model.frame(model)
+
+  # Coerce focal vars to factor if they aren't already
+  if (!is.factor(d[[pred]])) {
+    d[[pred]] <- factor(d[[pred]])
+  }
+  if (!is.null(modx)) {
+    if (!is.factor(d[[modx]])) {
+      d[[modx]] <- factor(d[[modx]])
+    }
+  }
+  if (!is.null(mod2)) {
+    if (!is.factor(d[[mod2]])) {
+      d[[mod2]] <- factor(d[[mod2]])
+    }
+  }
+
+  # Is it a svyglm?
+  if (class(model)[1] == "svyglm" || class(model)[1] == "svrepglm") {
+    survey <- TRUE
+    mixed <- FALSE
+    design <- model$survey.design
+    d <- design$variables
+
+    wts <- weights(design) # for use with points.plot aesthetic
+
+    # Focal vars so the weights don't get centered
+    fvars <- as.character(attributes(terms(model))$variables)
+    # for some reason I can't get rid of the "list" as first element
+    fvars <- fvars[2:length(fvars)]
+    all.vars <- fvars
+
+    facvars <- c()
+    for (v in fvars) {
+      if (is.factor((d[,v])) && length(unique(d[,v])) > 2) {
+        facvars <- c(facvars, v)
+      }
+    }
+
+  } else {
+    survey <- FALSE
+    if (class(model)[1] %in% c("glmerMod","lmerMod","nlmerMod")) {
+
+      mixed <- TRUE
+      if (interval == TRUE) {
+        warning("Confidence intervals cannot be provided for random effects",
+                " models.")
+        interval <- FALSE
+      }
+
+    } else {
+      mixed <- FALSE
+    }
+
+    fvars <- as.character(attributes(terms(model))$variables)
+    # for some reason I can't get rid of the "list" as first element
+    fvars <- fvars[2:length(fvars)]
+    all.vars <- fvars
+
+    facvars <- c()
+    for (v in fvars) {
+      if (is.factor((d[,v])) && length(unique(d[,v])) > 2) {
+        facvars <- c(facvars, v)
+      }
+    }
+
+  }
+
+  # weights?
+  if (survey == FALSE && ("(weights)" %in% names(d) |
+                          !is.null(getCall(model)$weights))) {
+    weights <- TRUE
+    wname <- as.character(getCall(model)["weights"])
+    if (any(colnames(d) == "(weights)")) {
+      colnames(d)[which(colnames(d) == "(weights)")] <- wname
+    }
+    wts <- d[,wname]
+
+  } else {
+
+    weights <- FALSE
+    wname <- NULL
+    if (survey == FALSE) {wts <- rep(1, times = nrow(d))}
+
+  }
+
+  # offset?
+  if (!is.null(model.offset(model.frame(model)))) {
+
+    off <- TRUE
+    # subset gives bare varname
+    offname <- as.character(getCall(model)$offset[-1])
+
+    # Getting/setting offset name depending on whether it was specified in
+    # argument or formula
+    if (any(colnames(d) == "(offset)") & !is.null(offname)) {
+      colnames(d)[which(colnames(d) == "(offset)")] <- offname
+    } else if (any(colnames(d) == "(offset)") & is.null(offname)) {
+
+      offname <- "(offset)"
+
+      # This strategy won't work for svyglm
+      if (survey == TRUE) {
+
+        stop("For svyglm with offsets, please specify the offset with the
+             'offset =' argument rather than in the model formula.")
+
+      }
+
+    }
+
+    # See if offset term was logged
+    if (offname == "(offset)") {
+      offterm <- regmatches(as.character(formula(model)),
+                            regexpr("(?<=(offset\\()).*(?=(\\)))",
+                                    as.character(formula(model)), perl = TRUE))
+      if (grepl("log(", offterm, fixed = TRUE)) {
+
+        d[,offname] <- exp(d[,offname])
+
+      }
+
+    }
+
+    # Exponentiate offset if it was logged
+    if ("log" %in% as.character(getCall(model)$offset)) {
+      d[,offname] <- exp(d[,offname])
+    }
+
+  } else {
+
+      off <- FALSE
+      offname <- NULL
+
+  }
+
+  # Setting default for colors
+  facmod <- TRUE
+  if (is.null(color.class)) {
+    color.class <- "Set2"
+  }
+
+  # For setting dimensions correctly later
+  nc <- ncol(d)
+
+  # Get the formula from lm object if given
+  formula <- formula(model)
+  formula <- paste(formula[2], formula[1], formula[3])
+
+  # Pulling the name of the response variable for labeling
+  resp <- sub("(.*)(?=~).*", x = formula, perl = TRUE, replacement = "\\1")
+  resp <- trimws(resp)
+
+##### Centering ###############################################################
+
+  # Update facvars by pulling out all non-focals
+  facvars <-
+    facvars[facvars %nin% c(pred, resp, modx, mod2, wname, offname)]
+
+  # Use utility function shared by all interaction functions
+  c_out <- center_vals(d = d, weights = wts, facvars = facvars,
+                       fvars = fvars, pred = pred,
+                       resp = resp, modx = modx, survey = survey,
+                       design = design, mod2 = mod2, wname = wname,
+                       offname = offname, centered = centered,
+                       scale = scale, n.sd = n.sd)
+
+  design <- c_out$design
+  d <- c_out$d
+  fvars <- c_out$fvars
+  facvars <- c_out$facvars
+
+##### Creating predicted frame #################################################
+
+  # Creating a set of dummy values of the focal predictor for use in predict()
+  pred_len <- nlevels(d[[pred]])
+
+  if (!is.null(modx)) {
+    combos <- expand.grid(levels(d[[pred]]), levels(d[[modx]]))
+    combo_pairs <- paste(combos[[1]],combos[[2]])
+    og_pairs <- paste(d[[pred]], d[[modx]])
+    combos <- combos[combo_pairs %in% og_pairs,]
+    xpred_len <- nrow(combos)
+  } else {
+    xpred_len <- pred_len
+    combos <- as.data.frame(levels(d[[pred]]))
+  }
+
+  # Takes some rejiggering to get this right with second moderator
+  if (!is.null(mod2)) {
+    combos <- expand.grid(levels(d[[pred]]), levels(d[[modx]]),
+                          levels(d[[mod2]]))
+    combo_pairs <- paste(combos[[1]],combos[[2]],combos[[3]])
+    og_pairs <- paste(d[[pred]], d[[modx]], d[[mod2]])
+    combos <- combos[combo_pairs %in% og_pairs,]
+    xpred_len <- nrow(combos)
+  }
+
+  # Creating matrix for use in predict()
+  if (interval == TRUE) { # Only create SE columns if intervals needed
+    pm <- matrix(rep(0, xpred_len * (nc + 2)), ncol = (nc + 2))
+  } else {
+    pm <- matrix(rep(0, xpred_len * nc), ncol = nc)
+  }
+
+  # Naming columns
+  if (interval == TRUE) { # if intervals, name the SE columns
+    colnames(pm) <- c(colnames(d), "ymax", "ymin")
+  } else {
+    colnames(pm) <- colnames(d)
+  }
+
+  # Convert to dataframe
+  pm <- as.data.frame(pm)
+
+  # Add values of moderator to df
+  if (!is.null(modx)) {
+    pm[,modx] <- combos[[2]]
+  }
+  if (!is.null(mod2)) { # if second moderator
+    pm[,mod2] <- combos[[3]]
+  }
+
+  # Add values of focal predictor to df
+  pm[,pred] <- combos[[1]]
+
+  # Set factor predictors arbitrarily to their first level
+  if (length(facvars) > 0) {
+    for (v in facvars) {
+      pm[,v] <- levels(d[,v])[1]
+    }
+  }
+
+  if (off == TRUE) {
+    if (is.null(set.offset)) {
+      offset.num <- median(d[,offname])
+    } else {
+      offset.num <- set.offset
+    }
+
+    pm[,offname] <- offset.num
+    msg <- paste("Count is based on a total of", offset.num, "exposures")
+    message(msg)
+  }
+
+#### Predicting with update models ############################################
+
+  # Create predicted values based on specified levels of the moderator,
+  # focal predictor
+
+  ## This is passed to predict(), but for svyglm needs to be TRUE always
+  interval_arg <- interval
+
+  # Back-ticking variable names in formula to prevent problems with
+  # transformed preds
+  formc <- as.character(deparse(formula(model)))
+  for (var in all.vars) {
+
+    regex_pattern <- paste("(?<=(~|\\s|\\*|\\+))", escapeRegex(var),
+                           "(?=($|~|\\s|\\*|\\+))", sep = "")
+
+    bt_name <- paste("`", var, "`", sep = "")
+    formc <- gsub(regex_pattern, bt_name, formc, perl = TRUE)
+
+  }
+  form <- as.formula(formc)
+
+  ## Don't update model if no vars were centered
+  if (!is.null(centered) && centered == "none") {
+    modelu <- model
+  } else {
+    if (survey == FALSE) {
+      if (mixed == FALSE) {
+        modelu <- update(model, formula = form, data = d)
+      } else {
+        optimiz <- model@optinfo$optimizer
+        if (class(model) == "glmerMod") {
+          modelu <- update(model, formula = form, data = d,
+                           control = lme4::glmerControl(optimizer = optimiz,
+                                                        calc.derivs = FALSE))
+        } else {
+          modelu <- update(model, formula = form, data = d,
+                           control = lme4::lmerControl(optimizer = optimiz,
+                                                       calc.derivs = FALSE))
+        }
+      }
+    } else {
+      # Have to do all this to avoid adding survey to dependencies
+      interval_arg <- TRUE
+      call <- getCall(model)
+      call$design <- design
+      call$formula <- form
+      call[[1]] <- survey::svyglm
+      modelu <- eval(call)
+    }
+  }
+
+  if (mixed == TRUE) {
+    predicted <- as.data.frame(predict(modelu, newdata = pm,
+                                       type = outcome.scale,
+                                       allow.new.levels = F,
+                                       re.form = ~0))
+  } else {
+    predicted <- as.data.frame(predict(modelu, newdata = pm,
+                                       se.fit = interval_arg,
+                                       interval = int.type[1],
+                                       type = outcome.scale))
+  }
+  pm[,resp] <- predicted[,1] # this is the actual values
+
+  ## Convert the confidence percentile to a number of S.E. to multiply by
+  intw <- 1 - ((1 - int.width)/2)
+  ses <- qnorm(intw, 0, 1)
+
+  # See minimum and maximum values for plotting intervals
+  if (interval == TRUE) { # only create SE columns if intervals are needed
+    if (mixed == TRUE) {
+      # No SEs
+      warning("Standard errors cannot be calculated for mixed effect models.")
+    } else if (survey == FALSE) {
+      pm[,"ymax"] <- pm[,resp] + (predicted[,"se.fit"])*ses
+      pm[,"ymin"] <- pm[,resp] - (predicted[,"se.fit"])*ses
+    } else if (survey == TRUE) {
+      pm[,"ymax"] <- pm[,resp] + (predicted[,"SE"])*ses
+      pm[,"ymin"] <- pm[,resp] - (predicted[,"SE"])*ses
+    }
+  } else {
+    # Do nothing
+  }
+
+  # Saving x-axis label
+  if (is.null(x.label)) {
+    x.label <- pred
+  }
+
+  # Saving y-axis label
+  if (is.null(y.label)) {
+    y.label <- resp
+  }
+
+  # Labels for values of predictor and moderator
+  if (!is.null(modx)) {
+
+    pm[[modx]] <- factor(pm[[modx]], levels = levels(d[[modx]]))
+
+  }
+  pm[[pred]] <- factor(pm[[pred]], levels = levels(d[[pred]]))
+
+  # Setting labels for second moderator
+  if (!is.null(mod2)) {
+
+    pm[[mod2]] <- factor(pm[[mod2]], levels = levels(d[[mod2]]))
+
+  }
+
+#### Plotting #################################################################
+
+  # If no user-supplied legend title, set it to name of moderator
+  if (is.null(legend.main)) {
+    legend.main <- modx
+  }
+
+  # Sequential palettes get different treatment
+  sequentials <-
+    c("Blues", "BuGn", "BuPu", "GnBu", "Greens", "Greys", "Oranges", "OrRd",
+      "PuBu", "PuBuGn", "PuRd", "Purples", "RdPu", "Reds", "YlGn", "YlGnBu",
+      "YlOrBr", "YlOrRd")
+
+  # Get palette from RColorBrewer myself so I can use darker values
+  if (color.class %in% sequentials) {
+    colors <- RColorBrewer::brewer.pal((pred_len + 1), color.class)
+    colors <- rev(colors)[-1]
+  } else {
+    suppressWarnings(colors <- RColorBrewer::brewer.pal(pred_len, color.class))
+  }
+
+  names(colors) <- levels(d[[pred]])
+
+  a_level <- 1
+  if (plot.points == TRUE) {
+    if (!is.null(modx)) {
+      a_level <- 0
+    } else {
+      a_level <- 0.5
+    }
+  } else if (interval == TRUE) {
+    a_level <- 0.5
+  }
+
+  if (!is.null(modx)) {
+    if (point.shape == FALSE & vary.lty == FALSE) {
+      p <- ggplot(pm, aes_string(x = pred, y = resp, group = modx,
+                               colour = modx, fill = modx))
+    } else if (point.shape == TRUE & vary.lty == FALSE) {
+      p <- ggplot(pm, aes_string(x = pred, y = resp, group = modx,
+                                 colour = modx, fill = modx,
+                                 shape = modx))
+    } else if (point.shape == FALSE & vary.lty == TRUE) {
+      p <- ggplot(pm, aes_string(x = pred, y = resp, group = modx,
+                                 colour = modx, fill = modx,
+                                 linetype = modx))
+    } else if (point.shape == TRUE & vary.lty == TRUE) {
+      p <- ggplot(pm, aes_string(x = pred, y = resp, group = modx,
+                                 colour = modx, fill = modx,
+                                 shape = modx, linetype = modx))
+    }
+  } else {
+    if (point.shape == FALSE & vary.lty == FALSE) {
+      p <- ggplot(pm, aes_string(x = pred, y = resp,
+                                 colour = pred, fill = pred))
+    } else if (point.shape == TRUE & vary.lty == FALSE) {
+      p <- ggplot(pm, aes_string(x = pred, y = resp,
+                                 colour = pred, fill = pred,
+                                 shape = pred))
+    } else if (point.shape == FALSE & vary.lty == TRUE) {
+      p <- ggplot(pm, aes_string(x = pred, y = resp,
+                                 colour = pred, fill = pred))
+    } else if (point.shape == TRUE & vary.lty == TRUE) {
+      p <- ggplot(pm, aes_string(x = pred, y = resp,
+                                 colour = pred, fill = pred,
+                                 shape = pred))
+    }
+  }
+
+  if (geom == "bar") {
+    p <- p + geom_bar(stat = "identity", position = "dodge", alpha = a_level)
+  } else if (geom == "boxplot") {
+    if (!is.null(modx)) {
+      p <- ggplot(d, aes_string(x = pred, y = resp,
+                              colour = modx)) +
+      geom_boxplot(position = position_dodge(0.9))
+    } else {
+      p <- ggplot(d, aes_string(x = pred, y = resp,
+                                colour = pred)) +
+        geom_boxplot(position = position_dodge(0.9))
+    }
+  } else if (geom == "line") {
+    p <- p + geom_path() + geom_point(size = 4)
+  } else if (geom == "dot") {
+    p <- p + geom_point(size = 3, position = position_dodge(0.9))
+  }
+
+  # Plot intervals if requested
+  if (interval == TRUE & geom %in% c("bar", "dot")) {
+
+    p <- p + geom_errorbar(aes_string(ymin = "ymin", ymax = "ymax"),
+                         alpha = 1, show.legend = FALSE,
+                         position = position_dodge(0.9), width = 0.8)
+
+  } else if (interval == TRUE & geom %in% c("line")) {
+
+    p <- p + geom_errorbar(aes_string(ymin = "ymin", ymax = "ymax"),
+                           alpha = 0.8, show.legend = FALSE, width = 0.5)
+
+  }
+
+  # If third mod, facet by third mod
+  if (!is.null(mod2)) {
+    facets <- facet_grid(paste(". ~", mod2))
+    p <- p + facets
+  }
+
+  # For factor vars, plotting the observed points
+  # and coloring them by factor looks great
+  if (plot.points == TRUE) {
+    # Transform weights so they have mean = 1
+    const <- length(wts)/sum(wts) # scaling constant
+    const <- const * 2 # make the range of values larger
+    wts <- const * wts
+    # Append weights to data
+    d[,"the_weights"] <- wts
+
+    if (point.shape == TRUE & !is.null(modx)) {
+      p <- p + geom_point(data = d, aes_string(x = pred, y = resp,
+                                               colour = modx,
+                                               size = "the_weights",
+                                               shape = modx),
+                          position = position_jitterdodge(dodge.width = 0.9,
+                                                          jitter.width = 0.25,
+                                                          jitter.height = 0.25),
+                          inherit.aes = FALSE,
+                          show.legend = FALSE,
+                          alpha = 0.6)
+    } else if (point.shape == FALSE & !is.null(modx)) {
+      p <- p + geom_point(data = d, aes_string(x = pred, y = resp,
+                                               colour = modx,
+                                               size = "the_weights"),
+                          position = position_jitterdodge(dodge.width = 0.9,
+                                                          jitter.width = 0.25,
+                                                          jitter.height = 0.25),
+                          inherit.aes = FALSE,
+                          show.legend = FALSE,
+                          alpha = 0.6)
+    } else if (point.shape == TRUE & is.null(modx)) {
+      p <- p + geom_point(data = d, aes_string(x = pred, y = resp,
+                                               colour = pred,
+                                               size = "the_weights",
+                                               shape = modx),
+                          position = position_jitterdodge(dodge.width = 0.9,
+                                                          jitter.width = 0.25,
+                                                          jitter.height = 0.25),
+                          inherit.aes = FALSE,
+                          show.legend = FALSE,
+                          alpha = 0.6)
+    } else if (point.shape == FALSE & is.null(modx)) {
+      p <- p + geom_point(data = d, aes_string(x = pred, y = resp,
+                                               colour = pred,
+                                               size = "the_weights"),
+                          position = position_jitterdodge(dodge.width = 0.9,
+                                                          jitter.width = 0.25,
+                                                          jitter.height = 0.25),
+                          inherit.aes = FALSE,
+                          show.legend = FALSE,
+                          alpha = 0.6)
+    }
+
+
+    # Add size aesthetic to avoid giant points
+    p <- p + scale_size_identity()
+
+  }
+
+  # Using theme_apa for theming...but using legend title and side positioning
+  if (is.null(mod2)) {
+    p <- p + theme_apa(legend.pos = "right", legend.use.title = TRUE)
+  } else {
+    # make better use of space by putting legend on bottom for facet plots
+    p <- p + theme_apa(legend.pos = "bottom", legend.use.title = TRUE,
+                       facet.title.size = 10)
+  }
+  p <- p + labs(x = x.label, y = y.label) # better labels for axes
+
+  # Get scale colors, provide better legend title
+  p <- p + scale_colour_brewer(name = legend.main, palette = color.class)
+  p <- p + scale_fill_brewer(name = legend.main, palette = color.class)
+
+  # Need some extra width to show the linetype pattern fully
+  p <- p + theme(legend.key.width = grid::unit(2, "lines"))
+
+  # Give the plot the user-specified title if there is one
+  if (!is.null(main.title)) {
+    p <- p + ggtitle(main.title)
+  }
+
+  # Return the plot
+  return(p)
+
 }

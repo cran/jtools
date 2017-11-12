@@ -33,7 +33,7 @@ the output will say "variance."
 }
 \note{
 This function was designed independent of the \pkg{survey} package and
- is neither endorsed nor known to its authors.
+is neither endorsed nor known to its authors.
 }
 \examples{
  library(survey)
@@ -55,3 +55,5 @@ Other survey tools: \code{\link{pf_sv_test}},
   \code{\link{svycor}}, \code{\link{weights_tests}},
   \code{\link{wgttest}}
 }
+\concept{\pkg{survey} package extensions}
+\concept{survey tools}

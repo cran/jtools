@@ -6,10 +6,11 @@
 \usage{
 export_summs(..., error_format = "({std.error})", error_pos = c("below",
   "right", "same"), ci_level = 0.95, statistics = NULL,
-  model.names = NULL, to.word = FALSE, word.file = NULL)
+  model.names = NULL, coefs = NULL, to.word = FALSE, word.file = NULL)
 }
 \arguments{
-\item{...}{At minimum, a regression object(s). See details for more arguments.}
+\item{...}{At minimum, a regression object(s). See details for more
+arguments.}
 
 \item{error_format}{Which of standard error, confidence intervals, test
 statistics, or p values should be used to express uncertainty of estimates
@@ -33,6 +34,11 @@ the defaults by model type.}
 of each column, provide them here as a character vector.
 Otherwise, they will just be labeled by number. Default: NULL}
 
+\item{coefs}{If you want to include only a subset of the coefficients in
+the table, specify them here in a character vector. If you want the
+table to show different names for the coefficients, give a named vector
+where the names are the preferred coefficient names. See details for more.}
+
 \item{to.word}{Export the table to a Microsoft Word document?
 This functionality relies on the \pkg{officer}
 and \pkg{flextable} packages. Default: FALSE}
@@ -42,75 +48,78 @@ file. Ignored if \code{to.word} is FALSE. Default: NULL}
 }
 \value{
 If \code{to.word} is FALSE, a \code{\link[huxtable]{huxtable}}
-  object. If \code{to.word} is TRUE, it just writes the table to file and
-  returns nothing.
+object. If \code{to.word} is TRUE, it just writes the table to file and
+returns nothing.
 }
 \description{
 This function allows users to use the features of
-  \code{\link{summ}} (e.g., standardization, robust standard errors)
-  in the context of shareable HTML, LaTeX, and
-  Microsoft Word tables. It relies heavily on \code{\link[huxtable]{huxreg}}
-  to do the table formatting. This is particularly useful for putting
-  the results of multiple models into a single table.
+\code{\link{summ}} (e.g., standardization, robust standard errors)
+in the context of shareable HTML, LaTeX, and
+Microsoft Word tables. It relies heavily on \code{\link[huxtable]{huxreg}}
+to do the table formatting. This is particularly useful for putting
+the results of multiple models into a single table.
 }
 \details{
 There are many optional parameters not documented above. Any
-  argument that you would want to pass to \code{\link{summ}}, for instance,
-  will be used. Of particular interest may be the robust and standardize
-  arguments. Note that some \code{summ} arguments may not have any bearing
-  on the table output.
+argument that you would want to pass to \code{\link{summ}}, for instance,
+will be used. Of particular interest may be the robust and scale
+arguments. Note that some \code{summ} arguments may not have any bearing
+on the table output.
 
-  The default model summary statistics reporting follows this logic:
+The default model summary statistics reporting follows this logic:
 
-  \itemize{
-    \item summ.lm = c(N = "nobs", R2 = "r.squared"),
-    \item summ.glm = c(N = "nobs", AIC = "AIC", BIC = "BIC"),
-    \item summ.svyglm = c(N = "nobs", R2 = "r.squared"),
-    \item summ.merMod = c(N = "nobs", AIC = "AIC", BIC = "BIC")
-  }
+\itemize{
+\item summ.lm = c(N = "nobs", R2 = "r.squared"),
+\item summ.glm = c(N = "nobs", AIC = "AIC", BIC = "BIC"),
+\item summ.svyglm = c(N = "nobs", R2 = "r.squared"),
+\item summ.merMod = c(N = "nobs", AIC = "AIC", BIC = "BIC")
+}
 
-  If you set \code{statistics = "all"}, then the statistics argument
-  passed to \code{huxreg} will be \code{NULL}, which reports whichever
-  model statistics are available via \code{glance}. If you want no
-  model summary statistics, set the argument to \code{character(0)}.
+If you set \code{statistics = "all"}, then the statistics argument
+passed to \code{huxreg} will be \code{NULL}, which reports whichever
+model statistics are available via \code{glance}. If you want no
+model summary statistics, set the argument to \code{character(0)}.
 
-  You have a few options for the \code{error_format} argument.
-  You can include anything returned by \code{\link[broom]{tidy}}
-  (see also \code{\link{tidy.summ}}). For the most part, you will
-  be interested in \code{std.error} (standard error), \code{statistic}
-  (test statistic, e.g. t-value or z-value), \code{p.value}, or
-  \code{conf.high} and \code{conf.low}, which correspond to the
-  upper and lower bounds of the confidence interval for the estimate.
-  Note that the default \code{ci_level} argument is .95, but you
-  can alter that as desired.
+You have a few options for the \code{error_format} argument.
+You can include anything returned by \code{\link[broom]{tidy}}
+(see also \code{\link{tidy.summ}}). For the most part, you will
+be interested in \code{std.error} (standard error), \code{statistic}
+(test statistic, e.g. t-value or z-value), \code{p.value}, or
+\code{conf.high} and \code{conf.low}, which correspond to the
+upper and lower bounds of the confidence interval for the estimate.
+Note that the default \code{ci_level} argument is .95, but you
+can alter that as desired.
 
-  To format the error statistics, simply put the statistics desired in
-  curly braces wherever you want them in a character string. For example,
-  if you want the standard error in parentheses, the argument would be
-  \code{"({std.error})"}, which is the default. Some other ideas:
+To format the error statistics, simply put the statistics desired in
+curly braces wherever you want them in a character string. For example,
+if you want the standard error in parentheses, the argument would be
+\code{"({std.error})"}, which is the default. Some other ideas:
+\itemize{
+\item \code{"({statistic})"}, which gives you the test statistic in
+parentheses.
+\item \code{"({statistic}, p = {p.value})"}, which gives the test
+statistic followed by a "p =" p value all in parentheses. Note that
+you'll have to pay special attention to rounding if you do this to keep
+cells sufficiently narrow.
+\item \code{"[{conf.low}, {conf.high}]"``, which gives the confidence interval in the standard bracket notation. You could also explicitly write the confidence level, e.g.,}"95% CI \link{{conf.low}, {conf.high}}"`.
+}
 
-  \itemize{
+For \code{coefs}, the argument is slightly different than what is default
+in \code{huxreg}. If you provide a named vector of coefficients, then
+the table will refer to the selected coefficients by the names of the
+vector rather than the coefficient names. For instance, if I want to
+include only the coefficients for the \code{hp} and \code{mpg} but have
+the table refer to them as "Horsepower" and "Miles/gallon", I'd provide
+the argument like this:
+\code{c("Horsepower" = "hp", "Miles/gallon" = "mpg")}
 
-    \item \code{"({statistic})"}, which gives you the test statistic in
-    parentheses.
-    \item \code{"({statistic}, p = {p.value})"}, which gives the test
-    statistic followed by a "p =" p value all in parentheses. Note that
-    you'll have to pay special attention to rounding if you do this to keep
-    cells sufficiently narrow.
-    \item \code{"[{conf.low}, {conf.high}]"}, which gives the confidence
-    interval in the standard bracket notation. You could also explicitly
-    write the confidence level, e.g.,
-     \code{"95\% CI [{conf.low}, {conf.high}]"}.
+You can also pass any argument accepted by the
+\code{\link[huxtable]{huxreg}} function. A few that are likely to be
+oft-used are documented above, but visit \code{huxreg}'s documentation
+for more info.
 
-  }
-
-  You can also pass any argument accepted by the
-  \code{\link[huxtable]{huxreg}} function. A few that are likely to be
-  oft-used are documented above, but visit \code{huxreg}'s documentation
-  for more info.
-
-  For info on converting the \code{\link[huxtable]{huxtable}} object to
-  HTML or LaTeX, see \code{huxtable}'s documentation.
+For info on converting the \code{\link[huxtable]{huxtable}} object to
+HTML or LaTeX, see \code{huxtable}'s documentation.
 }
 \examples{
 
@@ -121,13 +130,15 @@ fit3 <- lm(Income ~ Frost + Illiteracy + Murder, data = as.data.frame(state.x77)
 # Export all 3 regressions with "Model #" labels,
 # standardized coefficients, and robust standard errors
 export_summs(fit1, fit2, fit3, model.names = c("Model 1","Model 2","Model 3"),
-             standardize = TRUE, robust = TRUE)
+             coefs = c("Frost Days" = "Frost", "\% Illiterate" = "Illiteracy",
+             "Murder Rate" = "Murder"),
+             scale = TRUE, robust = TRUE)
 
 }
 \seealso{
 \code{\link{summ}}
 
- \code{\link[huxtable]{huxreg}}
+\code{\link[huxtable]{huxreg}}
 
- \code{\link[ReporteRs]{writeDoc}}
+\code{\link[ReporteRs]{writeDoc}}
 }

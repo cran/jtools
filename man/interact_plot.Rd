@@ -5,13 +5,14 @@
 \title{Plot interaction effects in regression models}
 \usage{
 interact_plot(model, pred, modx, modxvals = NULL, mod2 = NULL,
-  mod2vals = NULL, centered = NULL, standardize = FALSE, n.sd = 1,
+  mod2vals = NULL, centered = NULL, scale = FALSE, n.sd = 1,
   plot.points = FALSE, interval = FALSE, int.type = c("confidence",
   "prediction"), int.width = 0.95, outcome.scale = "response",
-  set.offset = 1, x.label = NULL, y.label = NULL, pred.labels = NULL,
-  modx.labels = NULL, mod2.labels = NULL, main.title = NULL,
-  legend.main = NULL, color.class = NULL, line.thickness = 1.1,
-  vary.lty = TRUE)
+  linearity.check = FALSE, set.offset = 1, x.label = NULL,
+  y.label = NULL, pred.labels = NULL, modx.labels = NULL,
+  mod2.labels = NULL, main.title = NULL, legend.main = NULL,
+  color.class = NULL, line.thickness = 1.1, vary.lty = TRUE,
+  jitter = 0.1, standardize = NULL)
 }
 \arguments{
 \item{model}{A regression model of type \code{lm}, \code{glm},
@@ -31,7 +32,9 @@ deviation from the mean as well as the mean itself are used for continuous
 moderators. If the moderator is a factor variable and \code{modxvals} is
 \code{NULL}, each level of the factor is included. If
 \code{"plus-minus"}, plots lines when the moderator is at +/- 1 standard
-deviation without the mean.}
+deviation without the mean. You may also choose \code{"terciles"} to split
+the data into equally-sized groups and choose the point at the mean of
+each of those groups.}
 
 \item{mod2}{Optional. The name of the second moderator
 variable involved in the interaction.}
@@ -40,34 +43,36 @@ variable involved in the interaction.}
 facetted by? That is, there will be a separate plot for each level of this
 moderator. Defaults are the same as \code{modxvals}.}
 
-\item{centered}{A vector of quoted variable names that are to be mean-centered. If
-\code{NULL}, all non-focal predictors are centered. If not \code{NULL}, only
-the user-specified predictors are centered. User can also use "none" or "all"
-arguments. The response variable is not centered unless specified directly.}
+\item{centered}{A vector of quoted variable names that are to be
+mean-centered. If \code{NULL}, all non-focal predictors are centered. If
+not \code{NULL}, only the user-specified predictors are centered. User can
+also use "none" or "all" arguments. The response variable is not centered
+unless specified directly.}
 
-\item{standardize}{Logical. Would you like to standardize the variables
+\item{scale}{Logical. Would you like to standardize the variables
 that are centered? Default is \code{FALSE}, but if \code{TRUE} it will
 standardize variables specified by the \code{centered} argument. Note that
-non-focal predictors are centered when \code{centered = NULL}, its default.}
+non-focal predictors are centered when \code{centered = NULL}, its
+default.}
 
-\item{n.sd}{How many standard deviations should be used if \code{standardize
+\item{n.sd}{How many standard deviations should be used if \code{scale
 = TRUE}? Default is 1, but some prefer 2.}
 
 \item{plot.points}{Logical. If \code{TRUE}, plots the actual data points as a
-scatterplot on top of the interaction lines. If moderator is a factor, the dots
-will be the same color as their parent factor.}
+scatterplot on top of the interaction lines. The color of the dots will be
+based on their moderator value.}
 
-\item{interval}{Logical. If \code{TRUE}, plots confidence/prediction intervals
-the line using \code{\link[ggplot2]{geom_ribbon}}. Not supported for
-\code{merMod} models.}
+\item{interval}{Logical. If \code{TRUE}, plots confidence/prediction
+intervals around the line using \code{\link[ggplot2]{geom_ribbon}}. Not
+supported for \code{merMod} models.}
 
-\item{int.type}{Type of interval to plot. Options are "confidence" or "prediction".
-Default is confidence interval.}
+\item{int.type}{Type of interval to plot. Options are "confidence" or
+"prediction". Default is confidence interval.}
 
-\item{int.width}{How large should the interval be, relative to the standard error?
-The default, .95, corresponds to roughly 1.96 standard errors and a .05 alpha
-level for values outside the range. In other words, for a confidence interval,
-.95 is analogous to a 95\% confidence interval.}
+\item{int.width}{How large should the interval be, relative to the standard
+error? The default, .95, corresponds to roughly 1.96 standard errors and
+a .05 alpha level for values outside the range. In other words, for a
+confidence interval, .95 is analogous to a 95\% confidence interval.}
 
 \item{outcome.scale}{For nonlinear models (i.e., GLMs), should the outcome
 variable be plotted on the link scale (e.g., log odds for logit models) or
@@ -76,109 +81,165 @@ default is \code{"response"}, which is the original scale. For the link
 scale, which will show straight lines rather than curves, use
 \code{"link"}.}
 
+\item{linearity.check}{For two-way interactions only. If \code{TRUE}, plots a
+pane for each level of the moderator and superimposes a loess smoothed
+line (in gray) over the plot. This enables you to see if the effect is
+linear through the span of the moderator. See Hainmuller et al. (2016) in
+the references for more details on the intuition behind this. It is
+recommended that you also set \code{plot.points = TRUE} and use
+\code{modxvals = "terciles"} with this option.}
+
 \item{set.offset}{For models with an offset (e.g., Poisson models), sets a
 offset for the predicted values. All predicted values will have the same
 offset. By default, this is set to 1, which makes the predicted values a
 proportion. See details for more about offset support.}
 
-\item{x.label}{A character object specifying the desired x-axis label. If \code{NULL},
-the variable name is used.}
+\item{x.label}{A character object specifying the desired x-axis label. If
+\code{NULL}, the variable name is used.}
 
-\item{y.label}{A character object specifying the desired x-axis label. If \code{NULL},
-the variable name is used.}
+\item{y.label}{A character object specifying the desired x-axis label. If
+\code{NULL}, the variable name is used.}
 
 \item{pred.labels}{A character vector of 2 labels for the predictor if it is
-a 2-level factor or a continuous variable with only 2 values. If \code{NULL},
-the default, the factor labels are used.}
+a 2-level factor or a continuous variable with only 2 values. If
+\code{NULL}, the default, the factor labels are used.}
 
-\item{modx.labels}{A character vector of labels for each level of the moderator values,
-provided in the same order as the \code{modxvals} argument. If \code{NULL},
-the values themselves are used as labels unless \code{modxvals} is also \code{NULL}.
-In that case, "+1 SD" and "-1 SD" are used.}
+\item{modx.labels}{A character vector of labels for each level of the
+moderator values, provided in the same order as the \code{modxvals}
+argument. If \code{NULL}, the values themselves are used as labels unless
+\code{modxvals} is also \code{NULL}. In that case, "+1 SD" and "-1 SD"
+are used.}
 
-\item{mod2.labels}{A character vector of labels for each level of the 2nd moderator
-values, provided in the same order as the \code{mod2vals} argument. If \code{NULL},
-the values themselves are used as labels unless \code{mod2vals} is also \code{NULL}.
-In that case, "+1 SD" and "-1 SD" are used.}
+\item{mod2.labels}{A character vector of labels for each level of the 2nd
+moderator values, provided in the same order as the \code{mod2vals}
+argument. If \code{NULL}, the values themselves are used as labels unless
+\code{mod2vals} is also \code{NULL}. In that case, "+1 SD" and "-1 SD"
+are used.}
 
-\item{main.title}{A character object that will be used as an overall title for the
-plot. If \code{NULL}, no main title is used.}
+\item{main.title}{A character object that will be used as an overall title
+for the plot. If \code{NULL}, no main title is used.}
 
-\item{legend.main}{A character object that will be used as the title that appears
-above the legend. If \code{NULL}, the name of the moderating variable is used.}
+\item{legend.main}{A character object that will be used as the title that
+appears above the legend. If \code{NULL}, the name of the moderating
+variable is used.}
 
 \item{color.class}{Any palette argument accepted by
-\code{\link[ggplot2]{scale_colour_brewer}}. Default is "Set2" for factor moderators,
-"Blues" for +/- SD and user-specified \code{modxvals} values.}
+\code{\link[ggplot2]{scale_colour_brewer}}. Default is "Set2" for factor
+moderators, "Blues" for +/- SD and user-specified \code{modxvals} values.}
 
 \item{line.thickness}{How thick should the plotted lines be? Default is 1.1;
 ggplot's default is 1.}
 
-\item{vary.lty}{Should the resulting plot have different shapes for each line
-in addition to colors? Defaults to \code{TRUE}.}
+\item{vary.lty}{Should the resulting plot have different shapes for each
+line in addition to colors? Defaults to \code{TRUE}.}
+
+\item{jitter}{How much should \code{plot.points} observed values be "jittered"
+via \code{\link[ggplot2:position_jitter]{ggplot2::position_jitter()}}? When there are many points near each
+other, jittering moves them a small amount to keep them from
+totally overlapping. In some cases, though, it can add confusion since
+it may make points appear to be outside the boundaries of observed
+values or cause other visual issues. Default is 0.1, but set to 0 if
+you want no jittering.}
+
+\item{standardize}{Deprecated. Equivalent to \code{scale}. Please change your
+scripts to use \code{scale} instead as this argument will be removed in the
+future.}
 }
 \value{
-The functions returns a \code{ggplot} object, which can be treated like
-  a user-created plot and expanded upon as such.
+The functions returns a \code{ggplot} object, which can be treated
+like a user-created plot and expanded upon as such.
 }
 \description{
-\code{interact_plot()} plots regression lines at user-specified levels of a moderator
-variable to explore interactions. The plotting is done with \code{ggplot2} rather than
-base graphics, which some similar functions use.
+\code{interact_plot()} plots regression lines at user-specified levels of a
+moderator variable to explore interactions. The plotting is done with
+\code{ggplot2} rather than base graphics, which some similar functions use.
 }
 \details{
-This function provides a means for plotting conditional effects for the
-  purpose of exploring interactions in the context of regression. You must have the
-  package \code{ggplot2} installed to benefit from these plotting functions.
+This function provides a means for plotting conditional effects
+for the purpose of exploring interactions in the context of regression.
+You must have the
+package \code{ggplot2} installed to benefit from these plotting functions.
 
-  The function is designed for two and three-way interactions. For
-   additional terms, the
-  \code{\link[effects]{effects}} package may be better suited to the task.
+The function is designed for two and three-way interactions. For
+additional terms, the
+\code{\link[effects]{effects}} package may be better suited to the task.
 
-  This function supports nonlinear and generalized linear models and by
-  default will plot them on
-  their original scale (\code{outcome.scale = "response"}).
+This function supports nonlinear and generalized linear models and by
+default will plot them on
+their original scale (\code{outcome.scale = "response"}).
 
-  While mixed effects models from \code{lme4} are supported, only the fixed
-  effects are plotted. \code{lme4} does not provide confidence intervals,
-  so they are not supported with this function either.
+While mixed effects models from \code{lme4} are supported, only the fixed
+effects are plotted. \code{lme4} does not provide confidence intervals,
+so they are not supported with this function either.
 
-  Note: to use transformed predictors, e.g., \code{log(variable)},
-  put its name in quotes or backticks in the argument.
+Note: to use transformed predictors, e.g., \code{log(variable)},
+put its name in quotes or backticks in the argument.
 
-  \emph{Info about offsets:}
+\emph{Details on how observed data are split in multi-pane plots}:
 
-  Offsets are partially supported by this function with important
-  limitations. First of all, only a single offset per model is supported.
-  Second, it is best in general to specify offsets with the offset argument
-  of the model fitting function rather than in the formula. If it is
-  specified in the formula with a svyglm, this function will stop with an
-  error message.
+If you set \code{plot.points = TRUE} and request a multi-pane (facetted) plot
+either with a second moderator or \code{linearity.check = TRUE}, the observed
+data are split into as many groups as there  are panes and plotted
+separately. If the moderator is a factor, then the way this happens will
+be very intuitive since it's obvious which values go in which pane. The
+rest of this section will address the case of continuous moderators.
 
-  It is also advised not to do any transformations to the offset other than
-  the common log transformation. If you apply a log transform, this function
-  will deal with it sensibly. So if your offset is a logged count, the
-  exposure you set will be the non-logged version, which is much easeir to
-  wrap one's head around. For any other transformation you may apply, or
-  if you apply no transformation at all, the exposures used will be the
-  post-tranformation number (which is by default 1).
+My recommendation is that you use \code{modxvals = "terciles"} or
+\code{mod2vals = "terciles"} when you want to plot observed data on multi-pane
+plots. When you do, the data are split into three approximately
+equal-sized groups with the lowest third, middle third, and highest third
+of the data split accordingly. You can replicate this procedure using
+\code{\link[Hmisc:cut2]{Hmisc::cut2()}} with \code{g = 3} from the \code{Hmisc} package. Sometimes, the
+groups will not be equal in size because the number of observations is
+not divisible by 3 and/or there are multiple observations with the same
+value at one of the cut points.
+
+Otherwise, a more ad hoc procedure is used to split the data. Quantiles
+are found for each \code{mod2vals} or \code{modxvals} value. These are not the
+quantiles used to split the data, however, since we want the plotted lines
+to represent the slope at a typical value in the group. The next step,
+then, is to take the mean of each pair of neighboring quantiles and use
+these as the cut points.
+
+For example, if the \code{mod2vals} are at the 25th, 50th, and 75th percentiles
+of the distribution of the moderator, the data will be split at the
+37.5th and and 62.5th percentiles. When the variable is
+normally distributed, this will correspond fairly closely to using
+terciles.
+
+\emph{Info about offsets:}
+
+Offsets are partially supported by this function with important
+limitations. First of all, only a single offset per model is supported.
+Second, it is best in general to specify offsets with the offset argument
+of the model fitting function rather than in the formula. If it is
+specified in the formula with a svyglm, this function will stop with an
+error message.
+
+It is also advised not to do any transformations to the offset other than
+the common log transformation. If you apply a log transform, this function
+will deal with it sensibly. So if your offset is a logged count, the
+exposure you set will be the non-logged version, which is much easeir to
+wrap one's head around. For any other transformation you may apply, or
+if you apply no transformation at all, the exposures used will be the
+post-tranformation number (which is by default 1).
 }
 \examples{
 # Using a fitted lm model
 states <- as.data.frame(state.x77)
 states$HSGrad <- states$`HS Grad`
-fit <- lm(Income ~ HSGrad + Murder*Illiteracy,
+fit <- lm(Income ~ HSGrad + Murder * Illiteracy,
   data = states)
 interact_plot(model = fit, pred = Murder,
   modx = Illiteracy)
 
 # Using interval feature
-fit <- lm(accel ~ mag*dist, data=attenu)
+fit <- lm(accel ~ mag * dist, data = attenu)
 interact_plot(fit, pred = mag, modx = dist, interval = TRUE,
   int.type = "confidence", int.width = .8)
 
 # Using second moderator
-fit <- lm(Income ~ HSGrad*Murder*Illiteracy,
+fit <- lm(Income ~ HSGrad * Murder * Illiteracy,
   data = states)
 interact_plot(model = fit, pred = Murder,
   modx = Illiteracy, mod2 = HSGrad)
@@ -186,42 +247,53 @@ interact_plot(model = fit, pred = Murder,
 # With svyglm
 library(survey)
 data(api)
-dstrat <- svydesign(id=~1,strata=~stype, weights=~pw, data=apistrat, fpc=~fpc)
-regmodel <- svyglm(api00~ell*meals,design=dstrat)
+dstrat <- svydesign(id = ~1, strata = ~stype, weights = ~pw,
+                    data = apistrat, fpc = ~fpc)
+regmodel <- svyglm(api00 ~ ell * meals, design = dstrat)
 interact_plot(regmodel, pred = ell, modx = meals)
 
 # With lme4
 \dontrun{
 library(lme4)
 data(VerbAgg)
-mv <- glmer(r2 ~ Anger * mode + (1 | item), data = VerbAgg, family = binomial,
+mv <- glmer(r2 ~ Anger * mode + (1 | item), data = VerbAgg,
+            family = binomial,
             control = glmerControl("bobyqa"))
 interact_plot(mv, pred = Anger, modx = mode)
 }
 
 }
 \references{
-Bauer, D. J., & Curran, P. J. (2005). Probing interactions in fixed and multilevel
- regression: Inferential and graphical techniques. \emph{Multivariate Behavioral
- Research}, \emph{40}(3), 373-400.
- \url{http://dx.doi.org/10.1207/s15327906mbr4003_5}
+Bauer, D. J., & Curran, P. J. (2005). Probing interactions in fixed and
+multilevel regression: Inferential and graphical techniques.
+\emph{Multivariate Behavioral
+Research}, \emph{40}(3), 373-400.
+\url{http://dx.doi.org/10.1207/s15327906mbr4003_5}
 
-Cohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003). \emph{Applied multiple
+Cohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003). \emph{Applied
+multiple
 regression/correlation analyses for the behavioral sciences} (3rd ed.).
 Mahwah, NJ: Lawrence Erlbaum Associates, Inc.
+
+Hainmueller, J., Mummolo, J., & Xu, Y. (2016). How much should we trust
+estimates from multiplicative interaction models? Simple tools to improve
+empirical practice. SSRN Electronic Journal.
+\url{https://doi.org/10.2139/ssrn.2739221}
 }
 \seealso{
 \code{\link[rockchalk]{plotSlopes}} from \pkg{rockchalk} performs a
-  similar function, but
-  with R's base graphics---this function is meant, in part, to emulate
-  its features.
+similar function, but
+with R's base graphics---this function is meant, in part, to emulate
+its features.
 
-  \code{\link{sim_slopes}} performs a simple slopes analysis with a similar
-  argument syntax to this function.
+\code{\link{sim_slopes}} performs a simple slopes analysis with a similar
+argument syntax to this function.
 
-Other interaction tools: \code{\link{johnson_neyman}},
+Other interaction tools: \code{\link{cat_plot}},
+  \code{\link{johnson_neyman}},
   \code{\link{probe_interaction}}, \code{\link{sim_slopes}}
 }
 \author{
 Jacob Long <\email{long.1377@osu.edu}>
 }
+\concept{interaction tools}

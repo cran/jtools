@@ -1,10 +1,10 @@
 ---
-title: "`summ` --- An alternative to `summary` for regression models"
+title: "`j_summ` --- An alternative to `summary` for regression models"
 author: "Jacob Long"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{summ — An alternative to summary for regression models}
+  %\VignetteIndexEntry{j_summ() — An alternative to summary() for regression models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,46 +17,43 @@ library(jtools)
 ## 
 
 When sharing analyses with colleagues unfamiliar with R, I found that the output
-generally was not clear to them. Things were even worse if I wanted to give
-them information  that is not included in the output like VIFs, robust standard
-errors, or standardized coefficients since the functions for estimating these
-don't append them to a typical regression table. After creating output tables
-"by hand" on multiple occasions, I thought it best to pack things into a
-reusable function.
+ generally was not clear to them. Even worse, if I wanted to give them information 
+that is not included in the output like VIFs, robust standard errors, or standardized
+coefficients. After creating output tables "by hand" on multiple occasions, I thought
+it best to pack things into a reusable function.
 
-With no user-specified arguments except a fitted model, the output of `summ`
-looks like this:
+With no user-specified arguments except a fitted model, the output of `j_summ()` looks
+like this:
 
 ```{r}
 # Fit model
 fit <- lm(Income ~ Frost + Illiteracy + Murder, data = as.data.frame(state.x77))
-summ(fit)
+j_summ(fit)
 ```
 
-Like any output, this one is somewhat opinionated—some information is shown that
-perhaps not everyone would be interested in, some may be missing. That,
-of course, was the motivation behind the creation of the function; the author
-was no fan of `summary` and its lack of configurability. 
+Like any output, this one is somewhat opinionated—some information is shown that perhaps 
+not everyone would be interested in, some may be missing. That, of course, was the motivation
+behind the creation of the function; the author was no fan of `summary()` and its 
+lack of configurability. 
 
 ## Adding and removing written output
 
-Much of the output with `summ` can be removed while there are several other pieces
+Much of the output with `j_summ()` can be removed while there are several other pieces
 of information under the hood that users can ask for. 
 
 To remove the written output at the beginning, set `model.info = FALSE` and/or 
 `model.fit = FALSE`.
 
 ```{r}
-summ(fit, model.info = FALSE, model.fit = FALSE)
+j_summ(fit, model.info = FALSE, model.fit = FALSE)
 ```
 
 Another, related bit of information available before the coefficient table relates
-to model assumptions (for OLS linear regression). When `model.check = TRUE`,
-`summ` will report (with the help of the `car` package) two quantities
-related to linear regression assumptions:
+to model assumptions (for OLS linear regression). When `model.check = TRUE`, `j_summ()`
+will report (with the help fo the `car` package) two quantities related to linear regression assumptions:
 
-* The result of the Breusch-Pagan test for heteroskedasticity. A low *p* value
-indicates the presence of heteroskedasticity.
+* The result of the Breusch-Pagan test for heteroskedasticity. A low *p* value indicates
+the presence of heteroskedasticity.
 * A count of high-leverage observations using Cook's Distance. The threshold for 
 what is considered high is equal to $4/N$, where $N$ is the sample size.
 
@@ -65,7 +62,7 @@ a lack of meaningful problems), but instead as a heuristic for more probing with
 graphical analyses.
 
 ```{r}
-summ(fit, model.check = TRUE)
+j_summ(fit, model.check = TRUE)
 ```
 
 ## Report robust standard errors
@@ -73,8 +70,8 @@ summ(fit, model.check = TRUE)
 One of the problems that originally motivated the creation of this function was the
 desire to efficiently report robust standard errors—while it is easy enough for an
 experienced R user to calculate robust standard errors, there are not many simple ways
-to include the results in a regression table as is common with the likes of
-Stata, SPSS, etc.
+to include the results in a regression table as is common with the likes of Stata, SPSS,
+etc.
 
 Robust standard errors require the user to have both `lmtest` and `sandwich` packages
 installed. They do not need to be loaded.
@@ -85,125 +82,12 @@ default is "HC3". Stata's default is "HC1", so you may want to use that if your 
 is to replicate Stata analyses.
 
 ```{r}
-summ(fit, robust = TRUE, robust.type = "HC3")
+j_summ(fit, robust = TRUE, robust.type = "HC3")
 ```
 
-Robust standard errors can also be calculated for generalized linear models
-(i.e., `glm` objects) though some debate whether they should be used for models
-fit iteratively with non-normal errors. In the case of `svyglm`, the standard
-errors that package calculates are already robust to heteroskedasticity,
-so a `robust = TRUE` parameter will be ignored with a warning.
-
-You may also specify with `cluster` argument the name of a variable in the input
-data or a vector of clusters to get cluster-robust standard errors.
-
-
-## Standardized beta coefficients
-
-Some prefer to use standardized coefficients in order to avoid dismissing an effect
-as "small" when it is just the units of measure that are small. Standardized betas
-are used instead when `standardize = TRUE`. To be clear, since the meaning of
-"standardized beta" can vary depending on who you talk to, this option mean-centers
-the predictors as well but does not alter the dependent variable whatsoever. 
-If you want to standardize the dependent variable too, just add the 
-`standardize.response = TRUE` argument.
-
-```{r}
-summ(fit, standardize = TRUE)
-```
-
-You can also choose a different number of standard deviations to divide by for
-standardization. Andrew Gelman has been a proponent of dividing by 2 standard
-deviations; if you want to do things that way, give the argument `n.sd = 2`. 
-
-```{r}
-summ(fit, standardize = TRUE, n.sd = 2)
-```
-
-Note that this is achieved by refitting the model. If the model took a long time
-to fit initially, expect a similarly long time to refit it.
-
-### Mean-centered variables
-
-In the same vein as the standardization feature, you can keep the original scale
-while still mean-centering the predictors with the `center = TRUE` argument.
-
-```{r}
-summ(fit, center = TRUE)
-```
-
-## Confidence intervals
-
-In many cases, you'll learn more by looking at confidence intervals than 
-p-values. You can request them from `summ`.
-
-```{r}
-summ(fit, confint = TRUE, digits = 2)
-```
-
-You can adjust the width of the confidence intervals, which are by default
-95% CIs.
-
-```{r}
-summ(fit, confint = TRUE, ci.width = .5, digits = 2)
-```
-
-You might also want to drop the p-values altogether.
-
-```{r}
-summ(fit, confint = TRUE, pvals = FALSE, digits = 2)
-```
-
-Note that you can omit p-values regardless of whether you have requested 
-confidence intervals.
-
-## Generalized and Mixed models
-
-`summ` has been expanding its range of supported model types. `glm` was a
-natural extension and will cover most use cases.
-
-```{r}
-fitg <- glm(vs ~ drat + mpg, data = mtcars, family = binomial)
-
-summ(fitg)
-```
-
-For exponential family models, especially logit and Poisson, you may be
-interested in getting odds ratios rather than the linear beta estimates. 
-`summ` can handle that!
-
-```{r}
-summ(fitg, odds.ratio = TRUE)
-```
-
-Standard errors are omitted for odds ratio estimates since the confidence
-intervals are not symmetrical.
-
-You can also get summaries of `merMod` objects, the mixed models from the 
-`lme4` package.
-
-```{r message = FALSE, warning = FALSE}
-library(lme4)
-fm1 <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
-
-summ(fm1)
-```
-
-Note that the summary omits p-values by default
-unless the \code{pbkrtest} package is installed for linear models. 
-There's no clear-cut way to derive p-values with linear mixed models and
-treating the t-values like you would for OLS models will lead to 
-inflated Type 1 error rates. Confidence intervals are 
-better, but not perfect. Kenward-Roger calculated degrees of freedom are 
-fairly good under many circumstances and those are used by default when
-\code{pbkrtest} package is installed.
-See the documentation (`?summ.merMod`) for more info.
-
-### svyglm
-
-I won't run through any examples here, but `svyglm` models are supported and
-provide near-equivalent output to what you see here depending on whether they
-are linear models or generalized linear models.
+Robust standard errors will not be calculated for non-linear models (from `glm`) and `svyglm`
+models. In the case of `svyglm`, the standard errors that package calculates are already
+robust to heteroskedasticity, so a `robust = TRUE` parameter will be ignored.
 
 ## Other options
 
@@ -215,32 +99,19 @@ many digits past the decimal due to the inability to measure them so precisely o
 interpret them in applied settings. In other cases, it may be necessary to use more
 digits due to the way measures are calculated.
 
-The default argument is `digits = 3`.
+The default argument is `digits = 3`. 
 
 ```{r}
-summ(fit, model.info = FALSE, digits = 5)
+j_summ(fit, digits=5)
 ```
-
 ```{r}
-summ(fit, model.info = FALSE, digits = 1)
-```
-
-You can pre-set the number of digits you want printed for all `jtools` functions
-with the `jtools-digits` option.
-
-```{r}
-options("jtools-digits" = 2)
-summ(fit, model.info = FALSE)
-```
-
-```{r echo = F}
-options("jtools-digits" = NULL)
+j_summ(fit, digits=1)
 ```
 
 Note that the return object has non-rounded values if you wish to use them later.
 
 ```{r}
-j <- summ(fit, digits = 3)
+j <- j_summ(fit, digits = 3)
 
 j$coeftable
 ```
@@ -255,7 +126,7 @@ set `vifs = TRUE`.
 Note that the `car` package is needed to calculate VIFs.
 
 ```{r}
-summ(fit, vifs = TRUE)
+j_summ(fit, vifs = TRUE)
 ```
 
 There are many standards researchers apply for deciding whether a VIF is too large.
@@ -263,5 +134,36 @@ In some domains, a VIF over 2 is worthy of suspicion. Others set the bar higher,
 5 or 10. Ultimately, the main thing to consider is that small effects are more likely
 to be "drowned out" by higher VIFs.
 
+### Standardized beta coefficients
+
+Some prefer to use standardized coefficients in order to avoid dismissing an effect
+as "small" when it is just the units of measure that are small. Standardized betas
+are used instead when `standardized = TRUE`. To be clear, since the meaning of
+"standardized beta" can vary depending on who you talk to, this option mean-centers
+the variables too.
+
+```{r}
+j_summ(fit, standardize = TRUE)
+```
+
+You can also choose a different number of standard deviations to divide by for
+standardization. Andrew Gelman has been a proponent of dividing by 2 standard
+deviations; if you want to do things that way, give the argument `n.sd = 2`. 
+
+```{r}
+j_summ(fit, standardize = TRUE, n.sd = 2)
+```
+
+Note that this is achieved by refitting the model. If the model took a long time
+to fit initially, expect a similarly long time to refit it.
+
+### Mean-centered variables
+
+In the same vein as the standardization feature, you can keep the original scale
+while still mean-centering the predictors with the `center = TRUE` argument.
+
+```{r}
+j_summ(fit, center = TRUE)
+```
 
 

@@ -1,3 +1,91 @@
+## jtools 0.9.0 (CRAN release)
+
+This may be the single biggest update yet. If you downloaded from CRAN, be sure
+to check the 0.8.1 update as well.
+
+New features are organized by function.
+
+johnson_neyman:
+
+* A new `control.fdr` option is added to control the false discovery rate, 
+building on new research. This makes the test more conservative but less likely 
+to be a Type 1 error.
+* A `line.thickness` argument has been added after Heidi Jacobs pointed out 
+that it cannot be changed after the fact.
+* The construction of the multiple plots when using `sim_slopes` for 3-way
+interactions is much-improved.
+* The critical test statistic used by default has been slightly altered. It
+previously used a normal approximation; i.e., if `alpha = .05` the critical
+test statistic was always 1.96. Now, the residual degrees of freedom are used
+with the t distribution. You can do it the old way by setting `df = "normal"`
+or any arbitrary number.
+
+interact_plot: 
+
+* More improvements to `plot.points` (see 0.8.1 for more). You can now plot
+observed data with 3-way interactions.
+* Another pre-set `modxvals` and `mod2vals` specification has been added:
+`"terciles"`. This splits the observed data into 3 equally sized groups and 
+chooses as values the mean of each of those groups. This is especially good
+for skewed data and for second moderators.
+* A new `linearity.check` option for two-way interactions. This facets by each
+level of the moderator and lets you compare the fitted line with a loess 
+smoothed line to ensure that the interaction effect is roughly linear at each
+level of the (continuous) moderator. 
+* When the model used weights, like survey sampling weights, the observed data
+points are resized according to the observation's weight when 
+`plot.points = TRUE`.
+* New `jitter` argument added for those using `plot.points`. If you don't want 
+the points jittered, you can set `jitter = 0`. If you want more or less, you
+can play with the value until it looks right. This applies to `effect_plot` as
+well.
+
+summ:
+
+* Users are now informed why the function is taking so long if `r.squared`
+or `pbkrtest` are slowing things down. `r.squared` is now set to FALSE by 
+default.
+
+New functions!
+
+`plot_summs`: A graphic counterpart to `export_summs`, which was introduced in
+the 0.8.0 release. This plots regression coefficients to help in visualizing
+the uncertainty of each estimate and facilitates the plotting of nested models
+alongside each other for comparison. This allows you to use `summ` features 
+like robust standard errors and scaling with this type of plot that you could
+otherwise create with some other packages.
+
+`plot_coefs`: Just like `plot_summs`, but no special `summ` features. This 
+allows you to use models unsupported by `summ`, however, and you can provide
+`summ` objects to plot the same model with different `summ` argument alongside
+each other.
+
+`cat_plot`: This was a long time coming. It is a complementary function to 
+`interact_plot`, but is designed to deal with interactions between 
+categorical variables. You can use bar plots, line plots, dot plots, and
+box and whisker plots to do so. You can also use the function to plot the effect
+of a single categorical predictor without an interaction.
+
+## jtools 0.8.1
+
+Thanks to Kim Henry who reported a bug with `johnson_neyman` in the case that
+there is an interval, but the entire interval is outside of the plotted area:
+When that happened, the legend wrongly stated the plotted line was 
+non-significant.
+
+Besides that bugfix, some new features:
+
+* When `johnson_neyman` fails to find the interval (because it doesn't exist),
+it no longer quits with an error. The output will just state the interval was
+not found and the plot will still be created.
+* Much better support for plotting observed data in `interact_plot` has been 
+added. Previously, if the moderator was a factor, you would get very nicely
+colored plotted points when using `plot.points = TRUE`. But if the moderator
+was continuous, the points were just black and it wasn't very informative beyond
+examining the main effect of the focal predictor. With this update, the
+plotted points for continous moderators are shaded along a gradient that matches
+the colors used for the predicted lines and confidence intervals.
+
 ## jtools 0.8.0 (CRAN release)
 
 Not many user-facing changes since 0.7.4, but major refactoring internally

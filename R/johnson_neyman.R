@@ -20,6 +20,29 @@
 #' @param plot Should a plot of the results be printed? Default is \code{TRUE}.
 #'   The \code{ggplot2} object is returned either way.
 #'
+#' @param control.fdr Logical. Use the procedure described in Esarey & Sumner
+#'   (2017) to limit the false discovery rate? Default is FALSE. See details
+#'   for more on this method.
+#'
+#' @param line.thickness How thick should the predicted line be? This is
+#'   passed to `geom_path` as the `size` argument, but because of the way the
+#'   line is created, you cannot use `geom_path` to modify the output plot
+#'   yourself.
+#'
+#' @param df How should the degrees of freedom be calculated for the critical
+#'   test statistic? Previous versions used the large sample approximation; if
+#'   alpha was .05, the critical test statistic was 1.96 regardless of sample
+#'   size and model complexity. The default is now "residual", meaning the same
+#'   degrees of freedom used to calculate p values for regression coefficients.
+#'   You may instead choose any number or "normal", which reverts to the
+#'   previous behavior. The argument is not used if `control.fdr = TRUE`.
+#'
+#' @param digits An integer specifying the number of digits past the decimal to
+#'   report in the output. Default is 2. You can change the default number of
+#'   digits for all jtools functions with
+#'   \code{options("jtools-digits" = digits)} where digits is the desired
+#'   number.
+#'
 #' @details
 #'
 #'  The interpretation of the values given by this function is important and not
@@ -34,6 +57,17 @@
 #'  Usually, the predictor's slope is only significant \emph{outside} of the
 #'  range given by the function. The output of this function will make it clear
 #'  either way.
+#'
+#'  One weakness of this method of probing interactions is that it is analagous
+#'  to making multiple comparisons without any adjustment to the alpha level.
+#'  Esarey & Sumner (2017) proposed a method for addressing this, which is
+#'  implemented in the `interactionTest` package. This function implements that
+#'  procedure with modifications to the `interactionTest` code (that package is
+#'  not required to use this function). If you set `control.fdr = TRUE`, an
+#'  alternative *t* statistic will be calculated based on your specified alpha
+#'  level and the data. This will always be a more conservative test than when
+#'  `control.fdr = FALSE`. The printed output will report the calculated
+#'  critical *t* statistic.
 #'
 #'  This technique is not easily ported to 3-way interaction contexts. You could,
 #'  however, look at the J-N interval at two different levels of a second
@@ -60,11 +94,16 @@
 #' Bauer, D. J., & Curran, P. J. (2005). Probing interactions in fixed and multilevel
 #'  regression: Inferential and graphical techniques. \emph{Multivariate Behavioral
 #'  Research}, \emph{40}(3), 373-400.
-#'  \url{http://dx.doi.org/10.1207/s15327906mbr4003_5}
+#'  \url{http://doi.org/10.1207/s15327906mbr4003_5}
+#'
+#' Esarey, J., & Sumner, J. L. (2017). Marginal effects in interaction models:
+#'  Determining and controlling the false positive rate. Comparative Political
+#'  Studies, 1–33. Advance online publication.
+#'  \url{https://doi.org/10.1177/0010414017730080}
 #'
 #' Johnson, P.O. & Fay, L.C. (1950). The Johnson-Neyman technique, its theory
 #'  and application. \emph{Psychometrika}, \emph{15}, 349-367.
-#'  \url{http://dx.doi.org/10.1007/BF02288864}
+#'  \url{http://doi.org/10.1007/BF02288864}
 #'
 #' @examples
 #' # Using a fitted lm model
@@ -75,12 +114,14 @@
 #' johnson_neyman(model = fit, pred = Murder,
 #'   modx = Illiteracy)
 #'
-#' @importFrom stats vcov
+#' @importFrom stats vcov qt
 #' @export
 #'
 
 johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
-                           plot = TRUE) {
+                           plot = TRUE, control.fdr = FALSE,
+                           line.thickness = 0.5, df = "residual",
+                           digits = getOption("jtools-digits", 2)) {
 
   # Parse unquoted variable names
   predt <- as.character(substitute(pred))
@@ -95,14 +136,19 @@ johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
     modx <- modxt
   }
 
+  # Handling df argument
+  if (df == "residual") {
+    df <- df.residual(model)
+  } else if (df == "normal") {
+    df <- Inf
+  } else if (!is.numeric(df)) {
+    stop("df argument must be 'residual', 'normal', or a number.")
+  }
+
   # Structure
   out <- list()
-  out <- structure(out, pred = pred, modx = modx, alpha = alpha, plot = plot)
-
-  # Set critical t value
-  alpha <- alpha/2
-  tcrit <- qnorm(alpha, 0, 1)
-  tcrit <- abs(tcrit) # Reverse the sign since it gives negative at these low vals
+  out <- structure(out, pred = pred, modx = modx, alpha = alpha, plot = plot,
+                   digits = digits, control.fdr = control.fdr)
 
   # Construct interaction term
 
@@ -117,6 +163,71 @@ johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
   intterms <- c(intterm1, intterm2) # Both names, want to keep one
   intterm <- intterms[which(inttermstf)] # Keep the index that is TRUE
 
+  # Getting the range of the moderator
+  modrange <- range(model.frame(model)[,modx])
+  modrangeo <- range(model.frame(model)[,modx]) # for use later
+  modsd <- sd(model.frame(model)[,modx]) # let's expand outside observed range
+  modrange[1] <- modrange[1] - modsd
+  modrange[2] <- modrange[2] + modsd
+
+  if (control.fdr == FALSE) {
+    # Set critical t value
+    alpha <- alpha / 2
+    tcrit <- qt(alpha, df = df)
+    # Reverse the sign since it gives negative at these low vals
+    tcrit <- abs(tcrit)
+  } else if (control.fdr == TRUE) { # Use Esarey & Sumner (2017) correction
+
+    ## Model coefficients
+    coefs <- coef(model)
+    ## Predictor beta
+    predb <- coefs[pred]
+    ## Interaction term beta
+    intb <- coefs[intterm]
+
+    ## Covariance matrix of betas
+    vcovs <- vcov(model)
+    ## Predictor variance
+    vcov_pred <- vcovs[pred,pred]
+    ## Interaction variance
+    vcov_int <- vcovs[intterm,intterm]
+    ## Predictor-Interaction covariance
+    vcov_pred_int <- vcovs[pred,intterm]
+    ## Generate sequence of numbers along range of moderator
+    range_sequence <- seq(from = modrangeo[1], to = modrangeo[2],
+                          by = (modrangeo[2] - modrangeo[1])/1000)
+
+    ## Produces a sequence of marginal effects
+    marginal_effects <- predb + intb*range_sequence
+    ## SEs of those marginal effects
+    me_ses <- sqrt(vcov_pred + (range_sequence^2) * vcov_int +
+                     2 * range_sequence * vcov_pred_int)
+
+    ## t-values across range of marginal effects
+    ts <- marginal_effects / me_ses
+    ## Residual DF
+    df <- df.residual(model)
+    ## Get the minimum p values used in the adjustment
+    ps <- 2 * pmin(pt(ts, df = df), (1 - pt(ts, df = df)))
+    ## Multipliers
+    multipliers <- 1:length(marginal_effects) / length(marginal_effects)
+    ## Order the pvals
+    ps_o <- order(ps)
+
+    ## Adapted from interactionTest package function fdrInteraction
+    test <- 0
+    i <- 1 + length(marginal_effects)
+
+    while (test == 0 & i > 1) {
+
+      i <- i - 1
+      test <- min(ps[ps_o][1:i] <= multipliers[i] * alpha)
+
+    }
+
+    tcrit <- abs(qt(multipliers[i] * (alpha / 2), df))
+
+  }
 
   # Construct constituent terms to calculate the subsequent quadratic a,b,c
   if (is.null(vmat)) {
@@ -158,42 +269,56 @@ johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
   # Now we define a function to test for number of real solutions to it
   ## The discriminant can tell you how many there will be
   discriminant <- function(a,b,c) {
-    disc <- b^2-4*a*c
+    disc <- b^2 - 4 * a * c
 
     # If the discriminant is zero or something else, can't proceed.
     if (disc > 0) {
       out <- disc
     } else if (disc == 0) {
-      msg <- "There is only one real solution for the Johnson-Neyman interval.
-      Values cannot be supplied."
-      stop(msg)
+      # msg <- "There is only one real solution for the Johnson-Neyman interval.
+      # Values cannot be supplied."
+      # warning(msg)
+      return(NULL)
     } else {
-      msg <- "There are no real solutions for the Johnson-Neyman interval.
-      Values cannot be supplied."
-      stop(msg)
+      # msg <- "There are no real solutions for the Johnson-Neyman interval.
+      # Values cannot be supplied."
+      # warning(msg)
+      return(NULL)
     }
 
     return(out)
   }
 
   disc <- discriminant(a,b,c)
+  # Create value for attribute containing info on success/non-success of
+  # finding j-n interval analytically
+  if (is.null(disc)) {
+    failed <- TRUE
+  } else {
+    failed <- FALSE
+  }
+
 
   # As long as the above didn't error, let's solve the quadratic with this function
   quadsolve <- function(a,b,c, disc) {
     # first return value
-    x1 <- (-b+sqrt(disc))/(2*a)
+    x1 <- (-b + sqrt(disc)) / (2 * a)
     # second return value
-    x2 <- (-b-sqrt(disc))/(2*a)
+    x2 <- (-b - sqrt(disc)) / (2 * a)
     # return a vector of both values
-    result <- c(x1,x2)
+    result <- c(x1, x2)
     # make sure they are in increasing order
-    result <- sort(result, decreasing = F)
+    result <- sort(result, decreasing = FALSE)
 
     return(result)
 
   }
 
-  bounds <- quadsolve(a,b,c, disc)
+  if (!is.null(disc)) {
+    bounds <- quadsolve(a,b,c, disc)
+  } else {
+    bounds <- c(-Inf, Inf)
+  }
   names(bounds) <- c("Lower", "Higher")
 
   # Need to calculate confidence bands
@@ -231,13 +356,6 @@ johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
 
   }
 
-  # Getting the range of the moderator
-  modrange <- range(model.frame(model)[,modx])
-  modrangeo <- range(model.frame(model)[,modx]) # for use later
-  modsd <- sd(model.frame(model)[,modx]) # let's expand outside observed range
-  modrange[1] <- modrange[1] - modsd
-  modrange[2] <- modrange[2] + modsd
-
   # Generating values to feed to the CI function from the range
   x2 <- seq(from = modrange[1], to = modrange[2], length.out = 1000)
 
@@ -256,11 +374,13 @@ johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
   insigs <- setdiff(1:1000, sigs)
 
   # Create grouping variable in cbs
+  cbs$Significance <- rep(NA, nrow(cbs))
+  cbs$Significance <- factor(cbs$Significance, levels = c("Insignificant",
+                                                          "Significant"))
   index <- 1:1000 %in% insigs
   cbs$Significance[index] <- "Insignificant"
   index <- 1:1000 %in% sigs
   cbs$Significance[index] <- "Significant"
-  cbs$Significance <- factor(cbs$Significance)
 
   # Give user this little df
   out$cbands <- cbs
@@ -269,14 +389,24 @@ johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
   ## Would like to find more elegant way to do it
   index <- which(cbs$Significance == "Significant")[1]
 
-  if (index != 0) {
+  if (!is.na(index) & index != 0) {
     inside <- (cbs[index,modx] > bounds[1] && cbs[index,modx] < bounds[2])
+    all_sig <- NULL # Indicator for whether all values are either T or F
+
+    # We don't know from this first test, so we do another check here
+    if (is.na(which(cbs$Significance == "Insignificant")[1])) {
+      all_sig <- TRUE
+    } else {
+      all_sig <- FALSE
+    }
+
   } else {
-    stop("No moderator values in the range of the observed data were associated with significant slopes of the predictor.")
+    inside <- FALSE
+    all_sig <- TRUE
   }
 
 
-  out <- structure(out, inside = inside)
+  out <- structure(out, inside = inside, failed = failed, all_sig = all_sig)
 
   # Splitting df into three pieces
   cbso1 <- cbs[cbs[,modx] < bounds[1],]
@@ -284,53 +414,73 @@ johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
   cbsi <- cbs[(cbs[,modx] > bounds[1] & cbs[,modx] < bounds[2]),]
 
   # Create label based on alpha level
-  alpha <- alpha*2 # Undoing what I did earlier
+  alpha <- alpha * 2 # Undoing what I did earlier
   alpha <- gsub("0\\.", "\\.", as.character(alpha))
   pmsg <- paste("p <", alpha)
 
   # Let's make a J-N plot
   plot <- ggplot2::ggplot() +
+
     ggplot2::geom_path(data = cbso1, ggplot2::aes(x = cbso1[,modx],
                                     y = cbso1[,predl],
-                                    color = cbso1[,"Significance"])) +
-    ggplot2::geom_path(data = cbsi, ggplot2::aes(x = cbsi[,modx],
-                                                  y = cbsi[,predl],
-                                                  color = cbsi[,"Significance"])) +
-    ggplot2::geom_path(data = cbso2, ggplot2::aes(x = cbso2[,modx],
-                                                  y = cbso2[,predl],
-                                                  color = cbso2[,"Significance"])) +
+                                    color = cbso1[,"Significance"]),
+                       size = line.thickness) +
+
+    ggplot2::geom_path(data = cbsi,
+                       ggplot2::aes(x = cbsi[,modx], y = cbsi[,predl],
+                                    color = cbsi[,"Significance"]),
+                       size = line.thickness) +
+
+    ggplot2::geom_path(data = cbso2,
+                       ggplot2::aes(x = cbso2[,modx], y = cbso2[,predl],
+                                    color = cbso2[,"Significance"]),
+                       size = line.thickness) +
+
     ggplot2::geom_ribbon(data = cbso1,
                          ggplot2::aes(x = cbso1[,modx], ymin = cbso1[,"Lower"],
                                       ymax = cbso1[,"Upper"],
-                                      fill = cbso1[,"Significance"]), alpha = 0.2) +
+                                      fill = cbso1[,"Significance"]),
+                         alpha = 0.2) +
+
     ggplot2::geom_ribbon(data = cbsi,
                          ggplot2::aes(x = cbsi[,modx], ymin = cbsi[,"Lower"],
                                       ymax = cbsi[,"Upper"],
-                                      fill = cbsi[,"Significance"]), alpha = 0.2) +
+                                      fill = cbsi[,"Significance"]),
+                         alpha = 0.2) +
+
     ggplot2::geom_ribbon(data = cbso2,
                          ggplot2::aes(x = cbso2[,modx], ymin = cbso2[,"Lower"],
                                       ymax = cbso2[,"Upper"],
-                                      fill = cbso2[,"Significance"]), alpha = 0.2) +
+                                      fill = cbso2[,"Significance"]),
+                         alpha = 0.2) +
+
     ggplot2::scale_fill_manual(values = c("Significant" = "#00BFC4",
                                           "Insignificant" = "#F8766D"),
-                               labels = c("n.s.", pmsg)) +
+                               labels = c("n.s.", pmsg),
+                               breaks = c("Insignificant","Significant"),
+                               drop = FALSE,
+                               guide = ggplot2::guide_legend(order = 2)) +
+
     ggplot2::geom_hline(ggplot2::aes(yintercept = 0)) +
 
     ggplot2::geom_segment(ggplot2::aes(x = modrangeo[1], xend = modrangeo[2],
                                        y = 0, yend = 0,
                                        linetype = "Range of\nobserved\ndata"),
-                          lineend = "square", size = 1.25)
+                          lineend = "square", size = 1.25) +
+
+    # Adding this scale allows me to have consistent ordering
+    ggplot2::scale_linetype_discrete(guide = ggplot2::guide_legend(order = 1))
 
     if (out$bounds[1] < modrange[1]) {
       # warning("The lower bound is outside the range of the plotted data")
-    } else {
+    } else if (all_sig == FALSE) {
       plot <- plot + ggplot2::geom_vline(ggplot2::aes(xintercept = out$bounds[1]),
                                          linetype = 2, color = "#00BFC4")
     }
 
     if (out$bounds[2] > modrange[2]) {
       # warning("The upper bound is outside the range of the plotted data")
-    } else {
+    } else if (all_sig == FALSE) {
       plot <- plot + ggplot2::geom_vline(ggplot2::aes(xintercept = out$bounds[2]),
                                          linetype = 2, color = "#00BFC4")
     }
@@ -347,6 +497,11 @@ johnson_neyman <- function(model, pred, modx, vmat = NULL, alpha = 0.05,
 
 
   out$plot <- plot
+
+  # Add FDR info
+  if (control.fdr == TRUE) {
+    out$t_value <- tcrit
+  }
 
   class(out) <- "johnson_neyman"
 
@@ -367,18 +522,30 @@ print.johnson_neyman <- function(x, ...) {
     inout <- "INSIDE"
   }
 
-  x$bounds <- round(x$bounds, 4)
-  atts$modrange <- round(atts$modrange, 4)
+  x$bounds <- round(x$bounds, atts$digits)
+  atts$modrange <- round(atts$modrange, atts$digits)
   alpha <- gsub("0\\.", "\\.", as.character(atts$alpha))
   pmsg <- paste("p <", alpha)
 
   # Print the output
   cat("JOHNSON-NEYMAN INTERVAL\n\n")
-  cat("The slope of", atts$pred, "is", pmsg, "when", atts$modx,
-      "is", inout, "this interval:\n")
-  cat("[", x$bounds[1], ", ", x$bounds[2], "]\n", sep = "")
-  cat("Note: The range of observed values of ", atts$modx, " is [", atts$modrange[1], ", ",
-      atts$modrange[2], "]\n\n", sep = "")
+  if (all(is.finite(x$bounds))) {
+    cat("The slope of", atts$pred, "is", pmsg, "when", atts$modx,
+        "is", inout, "this interval:\n")
+    cat("[", round(x$bounds[1], atts$digits), ", ",
+        round(x$bounds[2], atts$digits), "]\n", sep = "")
+    cat("Note: The range of observed values of ", atts$modx,
+        " is [", round(atts$modrange[1], atts$digits), ", ",
+        round(atts$modrange[2], atts$digits), "]\n\n", sep = "")
+  } else {
+    cat("The Johnson-Neyman interval could not be found.",
+        "\nIs your interaction term significant?\n\n")
+  }
+  if (atts$control.fdr == TRUE) {
+    cat("Interval calculated using false discovery rate adjusted",
+        "t =", round(x$t_value, atts$digits),
+        "\n\n")
+  }
 
   # If requested, print the plot
   if (atts$plot == TRUE) {
@@ -386,4 +553,3 @@ print.johnson_neyman <- function(x, ...) {
   }
 
 }
-
