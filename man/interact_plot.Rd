@@ -84,7 +84,7 @@ scale, which will show straight lines rather than curves, use
 \item{linearity.check}{For two-way interactions only. If \code{TRUE}, plots a
 pane for each level of the moderator and superimposes a loess smoothed
 line (in gray) over the plot. This enables you to see if the effect is
-linear through the span of the moderator. See Hainmuller et al. (2016) in
+linear through the span of the moderator. See Hainmueller et al. (2016) in
 the references for more details on the intuition behind this. It is
 recommended that you also set \code{plot.points = TRUE} and use
 \code{modxvals = "terciles"} with this option.}
@@ -125,7 +125,9 @@ variable is used.}
 
 \item{color.class}{Any palette argument accepted by
 \code{\link[ggplot2]{scale_colour_brewer}}. Default is "Set2" for factor
-moderators, "Blues" for +/- SD and user-specified \code{modxvals} values.}
+moderators, "Blues" for +/- SD and user-specified \code{modxvals} values.
+Alternately, you may provide a vector of color values in any format
+accepted by \code{ggplot2}.}
 
 \item{line.thickness}{How thick should the plotted lines be? Default is 1.1;
 ggplot's default is 1.}
