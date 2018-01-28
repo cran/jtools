@@ -1,7 +1,7 @@
 Package: jtools
 Type: Package
 Title: Analysis and Presentation of Social Scientific Data
-Version: 0.9.1
+Version: 0.9.3
 Authors@R: person(c("Jacob","A."), "Long", email = "long.1377@osu.edu",
   role = c("aut", "cre"), comment = c(ORCID = "0000-0002-1582-6214"))
 Description: This is a collection of tools that the author (Jacob) has written
@@ -22,8 +22,8 @@ Suggests: boot, broom, car, cowplot, flextable, grid, huxtable (>=
 RoxygenNote: 6.0.1.9000
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2018-01-05 03:30:05 UTC; jacob
-Author: Jacob A. Long [aut, cre] (0000-0002-1582-6214)
+Packaged: 2018-01-28 19:35:39 UTC; Jacob
+Author: Jacob A. Long [aut, cre] (<https://orcid.org/0000-0002-1582-6214>)
 Maintainer: Jacob A. Long <long.1377@osu.edu>
 Repository: CRAN
-Date/Publication: 2018-01-05 05:27:40 UTC
+Date/Publication: 2018-01-28 19:48:35 UTC
