@@ -1,5 +1,8 @@
 ## ----echo=FALSE----------------------------------------------------------
+required <- c("survey", "weights")
 knitr::opts_chunk$set(message=F, warning=F)
+if (!all(sapply(required, requireNamespace, quietly = TRUE)))
+  knitr::opts_chunk$set(eval = FALSE)
 library(jtools)
 
 ## ------------------------------------------------------------------------

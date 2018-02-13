@@ -1,4 +1,7 @@
 ## ----echo=FALSE----------------------------------------------------------
+required <- c("survey", "huxtable", "broom")
+if (!all(sapply(required, requireNamespace, quietly = TRUE)))
+  knitr::opts_chunk$set(eval = FALSE)
 knitr::opts_chunk$set(message = F, warning = F, fig.width = 6, fig.height = 5)
 library(jtools)
 
