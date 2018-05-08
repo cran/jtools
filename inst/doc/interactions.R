@@ -6,35 +6,82 @@ knitr::opts_chunk$set(message = F, warning = F, fig.width = 6, fig.height = 5)
 library(jtools)
 
 ## ------------------------------------------------------------------------
-fiti <- lm(Income ~ Illiteracy * Murder, data = as.data.frame(state.x77))
+states <- as.data.frame(state.x77)
+fiti <- lm(Income ~ Illiteracy * Murder, data = states)
 summ(fiti)
 
 ## ------------------------------------------------------------------------
-summ(fiti, scale = TRUE)
+summ(fiti, center = TRUE)
 
 ## ------------------------------------------------------------------------
 interact_plot(fiti, pred = "Illiteracy", modx = "Murder")
-
-## ------------------------------------------------------------------------
-interact_plot(fiti, pred = "Illiteracy", modx = "Murder", modxvals = "plus-minus")
 
 ## ------------------------------------------------------------------------
 fitiris <- lm(Petal.Length ~ Petal.Width * Species, data = iris)
 interact_plot(fitiris, pred = "Petal.Width", modx = "Species")
 
 ## ------------------------------------------------------------------------
+interact_plot(fitiris, pred = "Petal.Width", modx = "Species",
+              modxvals = c("versicolor", "virginica"))
+
+## ------------------------------------------------------------------------
 interact_plot(fiti, pred = "Illiteracy", modx = "Murder", plot.points = TRUE)
 
 ## ------------------------------------------------------------------------
-interact_plot(fitiris, pred = "Petal.Width", modx = "Species", plot.points = TRUE)
+interact_plot(fitiris, pred = "Petal.Width", modx = "Species",
+              plot.points = TRUE)
 
 ## ------------------------------------------------------------------------
-fiti <- lm(Income ~ Illiteracy * Murder, data = as.data.frame(state.x77),
+interact_plot(fitiris, pred = "Petal.Width", modx = "Species",
+              plot.points = TRUE, jitter = 0.1, point.shape = TRUE)
+
+## ------------------------------------------------------------------------
+fiti <- lm(Income ~ Illiteracy * Murder, data = states,
            weights = Population)
 interact_plot(fiti, pred = "Illiteracy", modx = "Murder", plot.points = TRUE)
 
 ## ------------------------------------------------------------------------
-interact_plot(fiti, pred = "Illiteracy", modx = "Murder", interval = TRUE, int.width = 0.8)
+interact_plot(fiti, pred = "Illiteracy", modx = "Murder", interval = TRUE,
+              int.width = 0.8)
+
+## ------------------------------------------------------------------------
+set.seed(99)
+x <- rnorm(n = 200, mean = 3, sd = 1)
+err <- rnorm(n = 200, mean = 0, sd = 4)
+w <- rbinom(n = 200, size = 1, prob = 0.5)
+
+y_1 <- 5 - 4*x - 9*w + 3*w*x + err
+
+## ------------------------------------------------------------------------
+model_1 <- lm(y_1 ~ x * w)
+summ(model_1)
+
+## ------------------------------------------------------------------------
+interact_plot(model_1, pred = "x", modx = "w", linearity.check = TRUE, 
+              plot.points = TRUE)
+
+## ------------------------------------------------------------------------
+x_2 <- runif(n = 200, min = -3, max = 3)
+y_2 <- 2.5 - x_2^2 - 5*w + 2*w*(x_2^2) + err
+data_2 <- as.data.frame(cbind(x_2, y_2, w))
+
+model_2 <- lm(y_2 ~ x_2 * w, data = data_2)
+summ(model_2)
+
+## ------------------------------------------------------------------------
+interact_plot(model_2, pred = "x_2", modx = "w", linearity.check = TRUE, 
+              plot.points = TRUE)
+
+## ------------------------------------------------------------------------
+model_3 <- lm(y_2 ~ poly(x_2, 2) * w, data = data_2)
+summ(model_3)
+
+## ------------------------------------------------------------------------
+interact_plot(model_3, pred = "x_2", modx = "w", data = data_2)
+
+## ------------------------------------------------------------------------
+interact_plot(model_3, pred = "x_2", modx = "w", data = data_2,
+              linearity.check = TRUE, plot.points = TRUE)
 
 ## ------------------------------------------------------------------------
 interact_plot(fiti, pred = "Illiteracy", modx = "Murder",
@@ -66,11 +113,7 @@ sim_slopes(fiti, pred = Illiteracy, modx = Murder, johnson_neyman = TRUE,
 sim_slopes(fiti, pred = Illiteracy, modx = Murder, cond.int = TRUE)
 
 ## ------------------------------------------------------------------------
-sim_slopes(fiti, pred = Illiteracy, modx = Murder, robust = TRUE)
-
-## ------------------------------------------------------------------------
-sim_slopes(fiti, pred = Illiteracy, modx = Murder, scale = TRUE, 
-           centered = "all")
+sim_slopes(fiti, pred = Illiteracy, modx = Murder, robust = "HC3")
 
 ## ------------------------------------------------------------------------
 library(survey)
@@ -89,7 +132,8 @@ names(out)
 
 ## ------------------------------------------------------------------------
 fita3 <- lm(rating ~ privileges * critical * learning, data = attitude)
-probe_interaction(fita3, pred = critical, modx = learning, mod2 = privileges)
+probe_interaction(fita3, pred = critical, modx = learning, mod2 = privileges,
+                  alpha = .1)
 
 ## ------------------------------------------------------------------------
 mtcars$cyl <- factor(mtcars$cyl,
