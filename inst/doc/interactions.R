@@ -1,5 +1,5 @@
 ## ----echo=FALSE----------------------------------------------------------
-required <- c("survey")
+required <- c("survey", "huxtable", "sandwich", "cowplot")
 if (!all(sapply(required, requireNamespace, quietly = TRUE)))
   knitr::opts_chunk$set(eval = FALSE)
 knitr::opts_chunk$set(message = F, warning = F, fig.width = 6, fig.height = 5)
@@ -22,7 +22,7 @@ interact_plot(fitiris, pred = "Petal.Width", modx = "Species")
 
 ## ------------------------------------------------------------------------
 interact_plot(fitiris, pred = "Petal.Width", modx = "Species",
-              modxvals = c("versicolor", "virginica"))
+              modx.values = c("versicolor", "virginica"))
 
 ## ------------------------------------------------------------------------
 interact_plot(fiti, pred = "Illiteracy", modx = "Murder", plot.points = TRUE)
@@ -96,8 +96,17 @@ interact_plot(fitiris, pred = "Petal.Width", modx = "Species") + theme_apa()
 sim_slopes(fiti, pred = Illiteracy, modx = Murder, johnson_neyman = FALSE)
 
 ## ------------------------------------------------------------------------
-sim_slopes(fiti, pred = Illiteracy, modx = Murder, modxvals = c(0, 5, 10),
+sim_slopes(fiti, pred = Illiteracy, modx = Murder, modx.values = c(0, 5, 10),
            johnson_neyman = FALSE)
+
+## ------------------------------------------------------------------------
+ss <- sim_slopes(fiti, pred = Illiteracy, modx = Murder, modx.values = c(0, 5, 10))
+plot(ss)
+
+## ------------------------------------------------------------------------
+ss <- sim_slopes(fiti, pred = Illiteracy, modx = Murder, modx.values = c(0, 5, 10))
+library(huxtable)
+as_huxtable(ss)
 
 ## ------------------------------------------------------------------------
 sim_slopes(fiti, pred = Illiteracy, modx = Murder, johnson_neyman = TRUE)
@@ -146,6 +155,13 @@ interact_plot(fitc3, pred = hp, modx = wt, mod2 = cyl) +
 regmodel3 <- svyglm(api00 ~ avg.ed * growth * enroll, design = dstrat)
 sim_slopes(regmodel3, pred = growth, modx = avg.ed, mod2 = enroll,
           jnplot = TRUE)
+
+## ------------------------------------------------------------------------
+ss3 <- sim_slopes(regmodel3, pred = growth, modx = avg.ed, mod2 = enroll)
+plot(ss3)
+
+## ------------------------------------------------------------------------
+as_huxtable(ss3)
 
 ## ------------------------------------------------------------------------
 set.seed(5)

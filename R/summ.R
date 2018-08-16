@@ -490,6 +490,107 @@ print.summ.lm <- function(x, ...) {
 
 }
 
+#' @title knitr methods for summ
+#' @description There's no reason for end users to utilize these functions,
+#' but CRAN requires it to be documented.
+#' @param x The `summ` object
+#' @param options Chunk options.
+#' @param ... Ignored.
+#' @rdname knit_print.summ
+#' @export knit_print.summ.lm
+#'
+
+knit_print.summ.lm <- function(x, options = NULL, ...) {
+
+  if (!requireNamespace("huxtable")) {
+    return(knitr::normal_print(x))
+  }
+
+  if (length(options) > 0) {
+    if ("width" %in% names(options)) {
+      width <- options$width
+    } else {
+      width <- .2
+    }
+  }
+
+  # saving input object as j
+  j <- x
+  # saving attributes as x (this was to make a refactoring easier)
+  x <- attributes(j)
+
+  # Helper function to deal with table rounding, significance stars
+  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals)
+
+  context <- huxtable::guess_knitr_output_format()
+  if (context == "") {context <- "screen"}
+
+  if (x$model.info == TRUE) {
+    type <- paste("OLS linear regression")
+    mod_info <-
+      mod_info_list(missing = x$missing, n = x$n, dv = x$dv,
+                    type = "OLS linear regression")
+    obs <- mod_info$n
+    if ("missing" %in% names(mod_info)) {
+      obs <- paste0(obs, " (", mod_info$missing, " missing obs. deleted)")
+    }
+    mod_meta <- data.frame(
+      datum = c("Observations", "Dependent variable", "Type"),
+      value = c(obs, mod_info$dv, mod_info$type)
+    )
+    mod_meta <- huxtable::as_huxtable(mod_meta)
+    mod_meta <- hux_theme(mod_meta, caption = "Model Info",
+                          use_colnames = FALSE, width = width)
+    out <- format(mod_meta, output = context)
+  } else {
+    out <- NULL
+  }
+
+  if (x$model.fit == T && !is.null(x$modpval)) {
+    stats <- data.frame(stat = c(paste0("F(", x$fnum, ",", x$fden, ")"),
+                       "R\u00B2", "Adj. R\u00B2"),
+                  value = c(num_print(x$fstat, digits = x$digits),
+                       num_print(x$rsq, digits = x$digits),
+                       num_print(x$arsq, digits = x$digits))
+                  )
+    stats <- huxtable::as_huxtable(stats)
+    stats <- hux_theme(stats, caption = "Model Fit", use_colnames = FALSE,
+                       width = width)
+    out <- paste(out, format(stats, output = context), "\n\n")
+
+  }
+
+  se_info <- get_se_info(x$robust, x$use_cluster, manual = "OLS")
+  # Notifying user if variables altered from original fit
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- if (!is.null(ss)) {paste(";", ss)} else {ss}
+  cap <- paste0("Standard errors: ", se_info, ss)
+
+  ctable <- huxtable::as_huxtable(ctable)
+  ast_index <- which(names(ctable) == "")
+  ctable <- huxtable::add_rownames(ctable, '')
+  if (length(ast_index) == 1) {
+    colnames(ctable)[ast_index + 1] <- ""
+  }
+  ctable <- hux_theme(ctable, width = width)
+  if (length(ast_index == 1)) {
+    ctable <- huxtable::set_align(ctable, row = 2:nrow(ctable),
+                                  col = ast_index + 1, "left")
+  }
+  ctable <- huxtable::add_footnote(ctable, cap)
+
+  out <- paste(out, format(ctable, output = context), sep = "\n\n")
+  knitr::asis_output(out)
+  # ctable <- knitr::kable(ctable, caption = cap)
+  # ctable <- paste(c(
+  #   if (!(attr(ctable, "format") %in% c("html", "latex"))) {
+  #     c("", "", ctable, "\n")
+  #   }), collapse = "\n")
+  # knitr::asis_output(ctable)
+  # class(ctable) <- "knit_asis"
+
+}
+
 ###### glm ####################################################################
 
 #' Generalized linear regression summaries with options
@@ -757,6 +858,16 @@ summ.glm <- function(
 
   }
 
+  ## TODO: finish margins implementation
+  # if (margins == TRUE) {
+  #   margs <- rep(NA, times = length(ivs))
+  #   names(margs) <- ivs
+  #   the_margs <- summary(margins::margins(model))
+  #   which_coefs <- which(ivs %in% the_margs$factor)
+  #   margs[which_coefs] <- the_margs$AME
+  #   params[["A.M.E."]] <- margs
+  # }
+
   # Put things together
   which.cols <- which_columns(which.cols = which.cols, confint = confint,
                               ci.labs = make_ci_labs(ci.width), vifs = vifs,
@@ -813,7 +924,7 @@ print.summ.glm <- function(x, ...) {
   }
 
   if (x$model.fit == TRUE) {
-    stats <- paste("\U1D6D8\u00B2(", # symbol messes up my editor for rest of line
+    stats <- paste("\U1D6D8\u00B2(",
                   x$chisq$df,  ") = ", num_print(x$chisq$chi, x$digits), ", ",
                   italic("p"), " = ", num_print(x$chisq$p, x$digits), "\n",
                    italic("Pseudo-R\u00B2 (Cragg-Uhler)"), " = ",
@@ -838,6 +949,112 @@ print.summ.glm <- function(x, ...) {
   # Notifying user if variables altered from original fit
   ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
   if (!is.null(ss)) {cat("\n", ss, "\n", sep = "")}
+
+}
+
+
+#' @export knit_print.summ.glm
+#' @rdname knit_print.summ
+
+knit_print.summ.glm <- function(x, options = NULL, ...) {
+
+  if (!requireNamespace("huxtable")) {
+    return(knitr::normal_print(x))
+  }
+
+  if (length(options) > 0) {
+    if ("width" %in% names(options)) {
+      width <- options$width
+    } else {
+      width <- .2
+    }
+  }
+
+  # saving input object as j
+  j <- x
+  # saving attributes as x (this was to make a refactoring easier)
+  x <- attributes(j)
+
+  # Helper function to deal with table rounding, significance stars
+  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals)
+
+  context <- huxtable::guess_knitr_output_format()
+  if (context == "") {context <- "screen"}
+
+  if (x$model.info == TRUE) {
+    if (x$lmFamily[1] == "gaussian" && x$lmFamily[2] == "identity") {
+      type <- "Linear regression"
+    } else {
+      type <- "Generalized linear model"
+    }
+    mod_info <- mod_info_list(missing = x$missing, n = x$n, dv = x$dv,
+                              type = type)
+    obs <- mod_info$n
+    if ("missing" %in% names(mod_info)) {
+      obs <- paste0(obs, " (", mod_info$missing, " missing obs. deleted)")
+    }
+
+    if (type != "Linear regression") {
+      mod_meta <- data.frame(
+        datum = c("Observations", "Dependent variable", "Type", "Family",
+                  "Link"),
+        value = c(obs, mod_info$dv, mod_info$type, x$lmFamily[[1]],
+                  x$lmFamily[[2]])
+      )
+    } else {
+      mod_meta <- data.frame(
+        datum = c("Observations", "Dependent variable", "Type"),
+        value = c(obs, mod_info$dv, mod_info$type)
+      )
+    }
+
+    mod_meta <- huxtable::as_huxtable(mod_meta)
+    mod_meta <- hux_theme(mod_meta, caption = "Model Info",
+                          use_colnames = FALSE, width = width)
+    out <- format(mod_meta, output = context)
+  } else {
+    out <- NULL
+  }
+
+  if (x$model.fit == T) {
+    stats <- data.frame(stat = c(paste0("\U1D6D8\u00B2(", x$chisq$df,  ")"),
+                                 "Pseudo-R\u00B2 (Cragg-Uhler)",
+                                 "Pseudo-R\u00B2 (McFadden)",
+                                 "AIC", "BIC"),
+                        value = c(num_print(x$chisq$chi, x$digits),
+                                  num_print(x$rsq, digits = x$digits),
+                                  num_print(x$rsqmc, digits = x$digits),
+                                  num_print(x$aic, x$digits),
+                                  num_print(x$bic, x$digits))
+    )
+    stats <- huxtable::as_huxtable(stats)
+    stats <- hux_theme(stats, caption = "Model Fit", use_colnames = FALSE,
+                       width = width)
+    out <- paste(out, format(stats, output = context), "\n\n")
+
+  }
+
+  se_info <- get_se_info(x$robust, x$use_cluster)
+  # Notifying user if variables altered from original fit
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- if (!is.null(ss)) {paste(";", ss)} else {ss}
+  cap <- paste0("Standard errors: ", se_info, ss)
+
+  ctable <- huxtable::as_huxtable(ctable)
+  ast_index <- which(names(ctable) == "")
+  ctable <- huxtable::add_rownames(ctable, '')
+  if (length(ast_index) == 1) {
+    colnames(ctable)[ast_index + 1] <- ""
+  }
+  ctable <- hux_theme(ctable, width = width)
+  if (length(ast_index == 1)) {
+    ctable <- huxtable::set_align(ctable, row = 2:nrow(ctable),
+                                  col = ast_index + 1, "left")
+  }
+  ctable <- huxtable::add_footnote(ctable, cap)
+
+  out <- paste(out, format(ctable, output = context), sep = "\n\n")
+  knitr::asis_output(out)
 
 }
 
@@ -1232,6 +1449,116 @@ print.summ.svyglm <- function(x, ...) {
 
 }
 
+#' @export knit_print.summ.svyglm
+#' @rdname knit_print.summ
+
+knit_print.summ.svyglm <- function(x, options = NULL, ...) {
+
+  if (!requireNamespace("huxtable")) {
+    return(knitr::normal_print(x))
+  }
+
+  if (length(options) > 0) {
+    if ("width" %in% names(options)) {
+      width <- options$width
+    } else {
+      width <- .2
+    }
+  }
+
+  # saving input object as j
+  j <- x
+  # saving attributes as x (this was to make a refactoring easier)
+  x <- attributes(j)
+
+  # Helper function to deal with table rounding, significance stars
+  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals)
+
+  context <- huxtable::guess_knitr_output_format()
+  if (context == "") {context <- "screen"}
+
+  if (x$model.info == TRUE) {
+    if (x$lmFamily[1] == "gaussian" && x$lmFamily[2] == "identity") {
+      type <- "Survey-weighted linear regression"
+    } else {
+      type <- "Survey-weighted generalized linear model"
+    }
+    mod_info <- mod_info_list(missing = x$missing, n = x$n, dv = x$dv,
+                              type = type)
+    obs <- mod_info$n
+    if ("missing" %in% names(mod_info)) {
+      obs <- paste0(obs, " (", mod_info$missing, " missing obs. deleted)")
+    }
+
+    if (type != "Survey-weighted linear regression") {
+      mod_meta <- data.frame(
+        datum = c("Observations", "Dependent variable", "Type", "Family",
+                  "Link"),
+        value = c(obs, mod_info$dv, mod_info$type, x$lmFamily[[1]],
+                  x$lmFamily[[2]])
+      )
+    } else {
+      mod_meta <- data.frame(
+        datum = c("Observations", "Dependent variable", "Type"),
+        value = c(obs, mod_info$dv, mod_info$type)
+      )
+    }
+
+    mod_meta <- huxtable::as_huxtable(mod_meta)
+    mod_meta <- hux_theme(mod_meta, caption = "Model Info",
+                          use_colnames = FALSE, width = width)
+    out <- format(mod_meta, output = context)
+  } else {
+    out <- NULL
+  }
+
+  if (x$model.fit == T) {
+
+    if (type != "Survey-weighted linear regression") {
+      stats <- data.frame(stat = c("Pseudo-R\u00B2 (Cragg-Uhler)",
+                                   "Pseudo-R\u00B2 (McFadden)",
+                                   "AIC"),
+                          value = c(num_print(x$rsq, digits = x$digits),
+                                    num_print(x$rsqmc, digits = x$digits),
+                                    num_print(x$aic, x$digits))
+                          )
+    } else {
+      stats <- data.frame(stat = c("R\u00B2", "Adj. R\u00B2"),
+                          value = c(num_print(x$rsq, digits = x$digits),
+                                    num_print(x$arsq, digits = x$digits))
+      )
+    }
+
+    stats <- huxtable::as_huxtable(stats)
+    stats <- hux_theme(stats, caption = "Model Fit", use_colnames = FALSE,
+                       width = width)
+    out <- paste(out, format(stats, output = context), "\n\n")
+
+  }
+
+  # Notifying user if variables altered from original fit
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- if (!is.null(ss)) {paste(";", ss)} else {ss}
+  cap <- paste0("Standard errors: Robust", ss)
+
+  ctable <- huxtable::as_huxtable(ctable)
+  ast_index <- which(names(ctable) == "")
+  ctable <- huxtable::add_rownames(ctable, '')
+  if (length(ast_index) == 1) {
+    colnames(ctable)[ast_index + 1] <- ""
+  }
+  ctable <- hux_theme(ctable, width = width)
+  if (length(ast_index == 1)) {
+    ctable <- huxtable::set_align(ctable, row = 2:nrow(ctable),
+                                  col = ast_index + 1, "left")
+  }
+  ctable <- huxtable::add_footnote(ctable, cap)
+
+  out <- paste(out, format(ctable, output = context), sep = "\n\n")
+  knitr::asis_output(out)
+
+}
+
 ##### merMod ##################################################################
 
 #' Mixed effects regression summaries with options
@@ -1309,9 +1636,18 @@ print.summ.svyglm <- function(x, ...) {
 #'
 #'  You have some options to customize the output in this regard with the
 #'  \code{t.df} argument. If \code{NULL}, the default, the
-#'  degrees of freedom used depends on whether the user has \pkg{pbkrtest}
-#'  installed. If installed, the Kenward-Roger approximation is used. If not,
-#'  and user sets \code{pvals = TRUE}, then the residual degrees of freedom
+#'  degrees of freedom used depends on whether the user has
+#'  \pkg{lmerTest} or \pkg{pbkrtest} installed. If `lmerTest` is installed,
+#'  the degrees of freedom for each coefficient are calculated using the
+#'  Satterthwaite method and the p values calculated accordingly.
+#'  If only `pbkrtest` is installed or `t.df` is `"k-r"`, the Kenward-Roger
+#'  approximation of the standard errors and degrees of freedom for each
+#'  coefficient is used. Note that Kenward-Roger standard errors can take
+#'  longer to calculate and may cause R to crash with models fit to large
+#'  (roughly greater than 5000 rows) datasets.
+#'
+#'  If neither is installed and the user sets
+#'  \code{pvals = TRUE}, then the residual degrees of freedom
 #'  is used. If \code{t.df = "residual"}, then the residual d.f. is used
 #'  without a message. If the user prefers to use some other method to
 #'  determine the d.f., then any number provided as the argument will be
@@ -1365,18 +1701,19 @@ print.summ.svyglm <- function(x, ...) {
 #'   data(sleepstudy)
 #'   mv <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
 #'
-#'   summ(mv) # Note lack of p values if you don't have pbkrtest
+#'   summ(mv) # Note lack of p values if you don't have lmerTest/pbkrtest
 #'
-#'   # Without pbkrtest, you'll get message about Type 1 errors
+#'   # Without lmerTest/pbkrtest, you'll get message about Type 1 errors
 #'   summ(mv, pvals = TRUE)
 #'
 #'   # To suppress message, manually specify t.df argument
 #'   summ(mv, t.df = "residual")
-#' }
 #'
-#' \dontrun{
-#'  # Confidence intervals may be better alternative in absence of pbkrtest
-#'  summ(mv, confint = TRUE)
+#'   # Confidence intervals may be better alternative to p values
+#'   summ(mv, confint = TRUE)
+#'   # Use conf.method to get profile intervals (may be slow to run)
+#'   # summ(mv, confint = TRUE, conf.method = "profile")
+#'
 #' }
 #'
 #' @references
@@ -1390,6 +1727,11 @@ print.summ.svyglm <- function(x, ...) {
 #'  \emph{53}, 983.
 #'  \url{https://doi.org/10.2307/2533558}
 #'
+#' Kuznetsova, A., Brockhoff, P. B., & Christensen, R. H. B. (2017). lmerTest
+#'  package: Tests in linear mixed effects models.
+#'  *Journal of Statistical Software*, *82*.
+#'  \url{https://doi.org/10.18637/jss.v082.i13}
+#'
 #' Luke, S. G. (2017). Evaluating significance in linear mixed-effects models
 #'  in R. \emph{Behavior Research Methods}, \emph{49}, 1494–1502.
 #'  \url{https://doi.org/10.3758/s13428-016-0809-y}
@@ -1398,8 +1740,6 @@ print.summ.svyglm <- function(x, ...) {
 #'  obtaining $R^2$ from generalized linear mixed-effects models.
 #'  \emph{Methods in Ecology and Evolution}, \emph{4}, 133–142.
 #'  \url{https://doi.org/10.1111/j.2041-210x.2012.00261.x}
-#'
-#'
 #'
 #'
 #' @importFrom stats coef coefficients lm predict sd cooks.distance pf logLik
@@ -1455,37 +1795,53 @@ summ.merMod <- function(
 
   # Get random effects variances argument
   re.variance <- match.arg(re.variance, c("sd", "var"), several.ok = FALSE)
-  # If pbkrtest is installed, using the Kenward-Roger approximation
-  if (requireNamespace("pbkrtest", quietly = TRUE)) {
 
-    if (is.null(pvals) & length(residuals(model)) <= 5000) {
-
+  # Setting defaults
+  manual_df <- FALSE
+  pbkr <- FALSE
+  satt <- FALSE
+  if (is.null(pvals)) {
+    if (is.null(t.df)) {
+      if (requireNamespace("lmerTest", quietly = TRUE) |
+          requireNamespace("pbkrtest", quietly = TRUE)) {
+        pvals <- TRUE
+      } else {
+        pvals <- FALSE
+      }
+    } else {
       pvals <- TRUE
-      pbkr <- TRUE
+    }
+  }
 
-    } else if (is.null(pvals) & length(residuals(model)) > 5000) {
-
-      pvals <- FALSE
-      pbkr <- FALSE
-      msg_wrap("Although the pbkrtest package is installed, pvals were not
-               calculated with it by default because the sample size is large
-               and the computation may have taken a very long time. You can
-               force p value calculation by setting pvals = TRUE.")
-
-    } else if (pvals == TRUE) {
-
-      pbkr <- TRUE
-
-    } else if (pvals == FALSE) {
-
-      pbkr <- FALSE
+  if (pvals == TRUE) {
+    if (is.null(t.df)) {
+      if (requireNamespace("lmerTest", quietly = TRUE)) {
+        satt <- TRUE
+      } else if (requireNamespace("pbkrtest", quietly = TRUE)) {
+        pbkr <- TRUE
+      }
+    } else {
+      if (t.df %in% c("s", "satterthwaite", "Satterthwaite")) {
+        if (requireNamespace("lmerTest", quietly = TRUE)) {
+          satt <- TRUE
+        } else {
+          stop_wrap("You have requested Satterthwaite p values but you do
+                    not have the lmerTest package installed.")
+        }
+      } else if (t.df %in% c("k-r", "kenward-roger", "Kenward-Roger")) {
+        if (requireNamespace("pbkrtest", quietly = TRUE)) {
+          pbkr <- TRUE
+        } else {
+          stop_wrap("You have requested Kenward-Roger p values but you do
+                    not have the pbkrtest package installed.")
+        }
+      } else if (is.numeric(t.df) | t.df %in% c("resid", "residual")) {
+        manual_df <- TRUE
+      } else {
+        stop_wrap("t.df argument not understood.")
+      }
 
     }
-
-  } else {
-
-    pbkr <- FALSE
-
   }
 
   if (lme4::isGLMM(model)) {
@@ -1495,9 +1851,6 @@ summ.merMod <- function(
       pvals <- TRUE
 
     }
-
-    # Using pbkr as a stand-in for whether to calculate t-vals myself
-    pbkr <- FALSE
 
   }
 
@@ -1583,51 +1936,65 @@ summ.merMod <- function(
   tcol <- colnames(sum$coefficients)[3]
   tcol <- gsub("value", "val.", tcol)
 
-  params[c("Est.", "S.E.", tcol)] <- list(coefs, ses, ts)
+  dfs <- NULL
+  p_calc <- NULL
 
   # lmerMod doesn't have p values, so
   if (!sum$isLmer) {
     ps <- sum$coefficients[,4]
     params[["p"]] <- ps
   } else {
-    # Use Kenward-Roger if available
-    if (pbkr == FALSE & is.null(t.df)) { # If not, do it like any lm
+    if (satt == TRUE) {
 
-      df <- n - length(ivs) - 1
+      all_coefs <- get_all_sat(model)
+      ts <- all_coefs[,"t value"]
+      ses <- all_coefs[,"Std. Error"]
+      dfs <- all_coefs[, "df"]
+      params[["d.f."]] <- dfs
+      ps <- all_coefs[, "Pr(>|t|)"]
+      p_calc <- "s"
 
-    } else if (pbkr == TRUE & is.null(t.df)) {
+    } else if (pbkr == TRUE) {
 
       t0 <- Sys.time()
-      df <- pbkrtest::get_ddf_Lb(model, lme4::fixef(model))
+      # df <- pbkrtest::get_ddf_Lb(model, lme4::fixef(model))
+      ses <- get_se_kr(model)
+      # New t values with adjusted covariance matrix
+      ts <- coefs[!is.na(coefs)] / ses
+      dfs <- get_df_kr(model)
+      params[["d.f."]] <- dfs
+      ps <- pt(abs(ts), lower.tail = F, dfs)
       t1 <- Sys.time()
 
-      if ((t1 - t0) > 5 & !getOption("pbkr_warned", FALSE)) {
-        message("If summ is taking too long to run, try setting\n",
-                "pvals = FALSE or t.df = 'residual' (or some number).")
+      if ((t1 - t0) > 10 & !getOption("pbkr_warned", FALSE)) {
+        msg_wrap("If summ is taking too long to run, try setting pvals = FALSE,
+                 t.df = 's' if you have the lmerTest package, or
+                 t.df = 'residual' (or some number).")
         options("pbkr_warned" = TRUE)
       }
 
-    } else if (!is.null(t.df)) {
+      p_calc <- "k-r"
+
+    } else if (manual_df == TRUE) {
 
       if (is.numeric(t.df)) {
         df <- t.df
+        p_calc <- "manual"
       } else if (t.df %in% c("residual","resid")) {
         df <- n - length(ivs) - 1
+        p_calc <- "residual"
       }
 
+      ps <- pt(abs(ts), lower.tail = F, df)
+
+
     }
 
-    vec <- rep(NA, times = length(ts))
-    for (i in seq_len(length(ts))) {
-      p <- pt(abs(ts[i]), lower.tail = F, df)
-      p <- p*2
-      vec[i] <- p
-    }
-
-    ps <- vec
-    params[["p"]] <- ps
+    if (exists("ps")) {params[["p"]] <- ps}
 
   }
+
+  params[c("Est.", "S.E.", tcol)] <- list(coefs, ses, ts)
 
   if (confint == TRUE | exp == TRUE) {
 
@@ -1669,7 +2036,8 @@ summ.merMod <- function(
   which.cols <- which_columns(which.cols = which.cols, confint = confint,
                               ci.labs = make_ci_labs(ci.width), vifs = FALSE,
                               pvals = pvals, t.col = tcol,
-                              exp = exp)
+                              exp = exp,
+                              df = !is.null(dfs))
   mat <- create_table(params = params, which.cols = which.cols, ivs = ivs)
 
   # Dealing with random effects
@@ -1688,7 +2056,7 @@ summ.merMod <- function(
                  vcnames = names(iccs), dv = names(model.frame(model)[1]),
                  npreds = nrow(mat),
                  confint = confint, ci.width = ci.width, pvals = pvals,
-                 df = df, pbkr = pbkr, r.squared = r.squared,
+                 df = df, p_calc = p_calc, r.squared = r.squared,
                  failed.rsq = failed.rsq, test.stat = tcol,
                  standardize.response = transform.response,
                  exp = exp,
@@ -1696,7 +2064,7 @@ summ.merMod <- function(
 
   j <- structure(j, lmFamily = family(model))
 
-  j$coeftable <- mat
+  j$coeftable <- as.table(mat)
   j$rcoeftable <- tables$rcmat # Random effects table
   j$gvars <- tables$gvmat # Grouping variables table
   j$model <- model
@@ -1746,37 +2114,41 @@ print.summ.merMod <- function(x, ...) {
   }
 
   cat(underline("FIXED EFFECTS:\n"))
+  if ("d.f." %in% names(ctable)) {
+    ctable[,"d.f."] <- as.integer(ctable[,"d.f."])
+  }
   print(ctable)
   ## Explaining the origin of the p values if they were used
   if (x$pvals == TRUE & lme4::isLMM(j$model)) {
 
-    if (x$pbkr == FALSE & is.null(x$t.df)) {
+    if (x$p_calc == "residual") {
 
-      cat(italic$cyan("\nNote: p values calculated based on residual d.f. ="),
-          x$df, "\n")
+      cat(italic$cyan("\nNote: p values calculated based on residual d.f. =",
+          x$df, "\n"))
 
-      message("Using p values with lmer based on residual d.f. may inflate\n",
-              "the Type I error rate in many common study designs. \n",
-              "Install package \"pbkrtest\" to get more accurate p values.")
-
-    } else if (x$pbkr == TRUE & is.null(x$t.df)) {
-
-      cat(italic("\np values calculated using Kenward-Roger d.f. ="),
-          round(x$df, x$digits), "\n")
-
-    } else if (!is.null(x$t.df)) {
-
-      if (x$t.df %in% c("residual", "resid")) {
-
-        cat(italic("\nNote: p values calculated based on residual d.f. ="),
-            x$df, "\n")
-
-      } else {
-
-        cat(italic("\nNote: p values calculated based on user-defined d.f. ="),
-            x$df, "\n")
-
+      if (is.null(x$t.df)) {
+        msg_wrap("Using p values with lmer based on residual d.f. may inflate
+                the Type I error rate in many common study designs.
+                Install package \"lmerTest\" and/or \"pbkrtest\" to get more
+                accurate p values.", brk = "\n")
       }
+
+    } else if (x$p_calc %in% c("k-r", "Kenward-Roger", "kenward-roger")) {
+
+      cat("\n")
+      cat_wrap(italic$cyan("p values calculated using Kenward-Roger standard
+                           errors and d.f."), brk = "\n")
+
+    } else if (x$p_calc %in% c("s", "Satterthwaite", "satterthwaite")) {
+
+      cat("\n")
+      cat_wrap(italic$cyan("p values calculated using Satterthwaite
+                      d.f."), brk = "\n")
+
+    } else if (x$p_calc == "manual") {
+
+      cat(italic("\nNote: p values calculated based on user-defined d.f. ="),
+          x$df, "\n")
 
     }
 
@@ -1796,6 +2168,170 @@ print.summ.merMod <- function(x, ...) {
   # Notifying user if variables altered from original fit
   ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
   if (!is.null(ss)) {cat("\n", ss, "\n", sep = "")}
+
+}
+
+#' @export knit_print.summ.merMod
+#' @rdname knit_print.summ
+
+knit_print.summ.merMod <- function(x, options = NULL, ...) {
+
+  if (!requireNamespace("huxtable")) {
+    return(knitr::normal_print(x))
+  }
+
+  # saving input object as j
+  j <- x
+  # saving attributes as x (this was to make a refactoring easier)
+  x <- attributes(j)
+
+  if (length(options) > 0) {
+    if ("width" %in% names(options)) {
+      width <- options$width
+    } else {
+      width <- .2
+    }
+  }
+
+  # Helper function to deal with table rounding, significance stars
+  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals)
+
+  context <- huxtable::guess_knitr_output_format()
+  if (context == "") {context <- "screen"}
+
+  if (x$model.info == TRUE) {
+    if (x$lmFamily[1] == "gaussian" && x$lmFamily[2] == "identity") {
+      type <- "Mixed effects linear regression"
+    } else {
+      type <- "Mixed effects generalized linear model"
+    }
+    mod_info <- mod_info_list(missing = x$missing, n = x$n, dv = x$dv,
+                              type = type)
+    obs <- mod_info$n
+    if ("missing" %in% names(mod_info)) {
+      obs <- paste0(obs, " (", mod_info$missing, " missing obs. deleted)")
+    }
+
+    if (type != "Mixed effects linear regression") {
+      mod_meta <- data.frame(
+        datum = c("Observations", "Dependent variable", "Type", "Family",
+                  "Link"),
+        value = c(obs, mod_info$dv, mod_info$type, x$lmFamily[[1]],
+                  x$lmFamily[[2]])
+      )
+    } else {
+      mod_meta <- data.frame(
+        datum = c("Observations", "Dependent variable", "Type"),
+        value = c(obs, mod_info$dv, mod_info$type)
+      )
+    }
+
+    mod_meta <- huxtable::as_huxtable(mod_meta)
+    mod_meta <- hux_theme(mod_meta, caption = "Model Info",
+                          use_colnames = FALSE, width = width)
+    out <- format(mod_meta, output = context)
+  } else {
+    out <- NULL
+  }
+
+  if (x$model.fit == T) {
+
+    stats <- data.frame(stat = c("AIC", "BIC"),
+                        value = c(num_print(x$aic, x$digits),
+                                  num_print(x$bic, x$digits))
+    )
+
+    if (x$r.squared == TRUE) {
+      stats <- data.frame(stat = c("AIC", "BIC",
+                                   "Pseudo-R\u00B2 (fixed effects)",
+                                   "Pseudo-R\u00B2 (total)"),
+                          value = c(num_print(x$aic, x$digits),
+                                    num_print(x$bic, x$digits),
+                                    num_print(x$rsq$Marginal, x$digits),
+                                    num_print(x$rsq$Conditional, x$digits))
+      )
+    }
+
+    stats <- huxtable::as_huxtable(stats)
+    stats <- hux_theme(stats, caption = "Model Fit", use_colnames = FALSE,
+                       width = width)
+    out <- paste(out, format(stats, output = context), "\n\n")
+
+  }
+
+  cap <- NULL
+
+  # Handling p-value explanation
+  if (x$pvals == TRUE & lme4::isLMM(j$model)) {
+
+    if (x$p_calc == "residual") {
+
+      p_stmt <- paste("Note: p values calculated based on residual d.f. =",
+                      x$df)
+
+      if (is.null(x$t.df)) {
+        msg_wrap("Using p values with lmer based on residual d.f. may inflate
+                the Type I error rate in many common study designs.
+                Install package \"lmerTest\" and/or \"pbkrtest\" to get more
+                accurate p values.", brk = "\n")
+      }
+
+    } else if (x$p_calc %in% c("k-r", "Kenward-Roger", "kenward-roger")) {
+
+      p_stmt <- paste("p values calculated using Kenward-Roger standard",
+                      "errors and d.f.")
+
+    } else if (x$p_calc %in% c("s", "Satterthwaite", "satterthwaite")) {
+
+      p_stmt <- paste("p values calculated using Satterthwaite d.f.")
+
+    } else if (x$p_calc == "manual") {
+
+      p_stmt <- paste("Note: p values calculated based on user-defined d.f. =",
+                      x$df)
+
+    }
+
+    cap <- paste(cap, p_stmt)
+
+  }
+
+  # Notifying user if variables altered from original fit
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- if (!is.null(ss)) {paste0("; ", ss)} else {ss}
+  cap <- paste(cap, ss)
+
+  ctable <- huxtable::as_huxtable(ctable)
+  ast_index <- which(names(ctable) == "")
+  ctable <- huxtable::add_rownames(ctable, '')
+  if (length(ast_index) == 1) {
+    colnames(ctable)[ast_index + 1] <- ""
+  }
+  ctable <- hux_theme(ctable, caption = "Fixed Effects", width = width)
+  if (length(ast_index == 1)) {
+    ctable <- huxtable::set_align(ctable, row = 2:nrow(ctable),
+                                  col = ast_index + 1, "left")
+  }
+  # ctable <- huxtable::set_align(ctable, row = 1, col = 1:ncol(ctable), "center")
+  if (!is.null(cap)) {
+    ctable <- huxtable::add_footnote(ctable, cap)
+  }
+
+  rtable <- round_df_char(j$rcoeftable, digits = x$digits, na_vals = "")
+  rtable <- huxtable::as_huxtable(rtable)
+  rtable <- hux_theme(rtable, align_body = "center", caption = "Random Effects",
+                      width = width)
+
+  gtable <- round_df_char(j$gvars, digits = x$digits, na_vals = "")
+  gtable[, "# groups"] <- as.integer(gtable[, "# groups"])
+  gtable <- huxtable::as_huxtable(gtable)
+  gtable <- hux_theme(gtable, align_body = "center",
+                      caption = "Grouping Variables", width = width)
+
+  out <- paste(out, format(ctable, output = context),
+               format(rtable, output = context),
+               format(gtable, output = context), sep = "\n\n")
+  knitr::asis_output(out)
 
 }
 

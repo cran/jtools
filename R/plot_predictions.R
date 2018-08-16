@@ -71,7 +71,7 @@
 #'
 #' * `pred`, `modx`, and `mod2`
 #' * `resp`
-#' * `predvals`, `modxvals`, and `mod2vals`
+#' * `pred.values`, `modx.values`, and `mod2.values`
 #' * `pred.labels`, `modx.labels`, and `mod2.labels`
 #' * `data`
 #' * `interval`
@@ -85,7 +85,7 @@
 plot_predictions <- function(predictions, pred = NULL, modx = NULL, mod2 = NULL,
   resp = NULL, data = NULL, geom = c("point", "line", "bar", "boxplot"),
   plot.points = FALSE, interval = TRUE,
-  predvals = NULL, modxvals = NULL, mod2vals = NULL, linearity.check = FALSE,
+  pred.values = NULL, modx.values = NULL, mod2.values = NULL, linearity.check = FALSE,
   facet.modx = FALSE, x.label = NULL, y.label = NULL, pred.labels = NULL,
   modx.labels = NULL, mod2.labels = NULL, main.title = NULL, legend.main = NULL,
   color.class = NULL, line.thickness = 1.1, vary.lty = NULL, jitter = 0,
@@ -114,11 +114,11 @@ plot_predictions <- function(predictions, pred = NULL, modx = NULL, mod2 = NULL,
     # It ain't elegant and I should probability fix the ones feeding these
     # incorrect names
     if ("modxvals2" %in% names(atts)) {
-      atts$modxvals <- atts$modxvals2
+      atts$modx.values <- atts$modxvals2
       atts <- atts[names(atts) %nin% "modxvals2"]
     }
     if ("mod2vals2" %in% names(atts)) {
-      atts$mod2vals <- atts$mod2vals2
+      atts$mod2.values <- atts$mod2vals2
       atts <- atts[names(atts) %nin% "mod2vals2"]
     }
     if ("weights" %in% names(atts)) {
@@ -136,8 +136,8 @@ plot_predictions <- function(predictions, pred = NULL, modx = NULL, mod2 = NULL,
   }
 
   # Renaming these objects for compatibility with the plotting functions
-  modxvals2 <- modxvals
-  mod2vals2 <- mod2vals
+  modxvals2 <- modx.values
+  mod2vals2 <- mod2.values
 
   if (is.factor(predictions[[pred]]) | is.character(predictions[[pred]]) |
       force.cat == TRUE) {
@@ -254,7 +254,7 @@ plot_mod_continuous <- function(predictions, pred, modx, resp, mod2 = NULL,
   if (length(color.class) == 1 | length(color.class) >= length(modxvals2)) {
     colors <- suppressWarnings(get_colors(color.class, length(modxvals2)))
   } else { # Allow manually defined colors
-    stop("Manually defined colors must be of same length as modxvals.")
+    stop("Manually defined colors must be of same length as modx.values.")
   }
 
   # Manually set linetypes
@@ -314,7 +314,8 @@ plot_mod_continuous <- function(predictions, pred, modx, resp, mod2 = NULL,
                          alpha = 1/5, show.legend = FALSE,
                          inherit.aes = FALSE)
 
-    p <- p + scale_fill_manual(values = colors, breaks = names(colors))
+    p <- p + scale_fill_manual(name = legend.main, values = colors,
+                               breaks = names(colors))
   }
 
   # If third mod, facet by third mod
@@ -373,8 +374,9 @@ plot_mod_continuous <- function(predictions, pred, modx, resp, mod2 = NULL,
     # Transform weights so they have mean = 1
     const <- length(wts)/sum(wts) # scaling constant
     # make the range of values larger, but only if there are non-1 weights
-    const <- const * ((1 * !all(wts == 1)) + point.size)
-    wts <- const * wts
+    no_wts <- all(wts == 1)
+    # const <- const * ((1 * !all(wts == 1)) + point.size)
+    wts <- (const * point.size) * wts
     # Append weights to data
     d[["the_weights"]] <- wts
 
@@ -383,16 +385,32 @@ plot_mod_continuous <- function(predictions, pred, modx, resp, mod2 = NULL,
       shape_arg <- if (point.shape == TRUE) {modx_g} else {NULL}
       shape_guide <- if (point.shape == TRUE) {TRUE} else {FALSE}
 
-      p <- p + geom_point(data = d, aes_string(x = pred_g, y = resp_g,
-                                               colour = modx_g,
-                                               size = "the_weights",
-                                               shape = shape_arg),
-                          position = position_jitter(width = jitter[1],
-                                                     height = jitter[2]),
-                          inherit.aes = TRUE, show.legend = shape_guide,
-                          size = point.size) +
-        scale_shape_discrete(name = legend.main, breaks = names(colors),
-                             na.value = "blank")
+      if (no_wts) {
+        p <- p + geom_point(data = d, aes_string(x = pred_g, y = resp_g,
+                                                 colour = modx_g,
+                                                 shape = shape_arg),
+                            position = position_jitter(width = jitter[1],
+                                                       height = jitter[2]),
+                            inherit.aes = FALSE,
+                            show.legend = shape_guide,
+                            size = point.size) +
+          scale_shape_discrete(name = legend.main, breaks = names(colors),
+                               na.value = "blank")
+      } else {
+        p <- p + geom_point(data = d, aes_string(x = pred_g, y = resp_g,
+                                                 colour = modx_g,
+                                                 size = "the_weights"
+,                                                 shape = shape_arg),
+                            position = position_jitter(width = jitter[1],
+                                                       height = jitter[2]),
+                            inherit.aes = TRUE,
+                            show.legend = shape_guide) +
+          scale_shape_discrete(name = legend.main, breaks = names(colors),
+                               na.value = "blank") +
+          # guides(shape = guide_legend(override.aes = list(size = point.size))) +
+          scale_size_identity(guide = "none")
+      }
+
     } else if (!is.factor(d[[modx]])) {
       # using alpha for same effect with continuous vars
       # set alpha argument dependent on whether this is a plot facetted by
@@ -404,12 +422,15 @@ plot_mod_continuous <- function(predictions, pred, modx, resp, mod2 = NULL,
                           colour = pp_color, inherit.aes = FALSE,
                           position = position_jitter(width = jitter[1],
                                                      height = jitter[2]),
-                          show.legend = FALSE, size = point.size) +
-        scale_alpha_continuous(range = alpha_arg, guide = "none")
+                          show.legend = FALSE) +
+        scale_alpha_continuous(range = alpha_arg, guide = "none") +
+        # Add size aesthetic to avoid giant points
+        scale_size_identity(
+          guide = "none"
+        )
+
     }
 
-    # Add size aesthetic to avoid giant points
-    p <- p + scale_size_continuous(range = c(0.5, 5), guide = "none")
 
   }
 
@@ -469,7 +490,7 @@ plot_mod_continuous <- function(predictions, pred, modx, resp, mod2 = NULL,
                                    breaks = names(ltypes),
                                    na.value = "blank")
     # Need some extra width to show the linetype pattern fully
-    p <- p + theme(legend.key.width = grid::unit(2, "lines"))
+    p <- p + theme(legend.key.width = grid::unit(3, "lines"))
   }
 
   # Give the plot the user-specified title if there is one
@@ -536,15 +557,18 @@ plot_effect_continuous <- function(predictions, pred, plot.points = FALSE,
     wts <- const * wts
     # Append weights to data
     d[["the_weights"]] <- wts
+    point.size <- wts
+
     p <- p + geom_point(data = d,
                         aes_string(x = pred_g, y = resp_g,
                          size = "the_weights"),
                         position = position_jitter(width = jitter[1],
                                                    height = jitter[2]),
-                        inherit.aes = FALSE, show.legend = FALSE)
+                        inherit.aes = FALSE, show.legend = FALSE,
+                        size = point.size)
     # Add size aesthetic to avoid giant points
     # p <- p + scale_size(range = c(0.3, 4))
-    p <- p + scale_size_identity()
+    # p <- p + scale_size_identity()
 
   }
 
@@ -590,8 +614,8 @@ plot_effect_continuous <- function(predictions, pred, plot.points = FALSE,
 
 
 plot_cat <- function(predictions, pred, modx = NULL, mod2 = NULL,
-   data = NULL, geom = c("point", "line", "bar", "boxplot"), predvals = NULL,
-   modxvals = NULL, mod2vals = NULL, interval = TRUE, plot.points = FALSE,
+   data = NULL, geom = c("point", "line", "bar", "boxplot"), pred.values = NULL,
+   modx.values = NULL, mod2.values = NULL, interval = TRUE, plot.points = FALSE,
    point.shape = FALSE, vary.lty = FALSE,  pred.labels = NULL,
    modx.labels = NULL, mod2.labels = NULL, x.label = NULL, y.label = NULL,
    main.title = NULL, legend.main = NULL, color.class = "CUD Bright",
@@ -645,7 +669,7 @@ plot_cat <- function(predictions, pred, modx = NULL, mod2 = NULL,
 
   # Deal with numeric predictors coerced into factors
   if (is.numeric(pm[[pred]])) {
-    pred.levels <- if (!is.null(predvals)) {predvals} else {
+    pred.levels <- if (!is.null(pred.values)) {pred.values} else {
       unique(pm[[pred]])
     }
     pred.labels <- if (!is.null(pred.labels)) {pred.labels} else {
@@ -690,7 +714,11 @@ plot_cat <- function(predictions, pred, modx = NULL, mod2 = NULL,
     dodge.width <- if (geom %in% c("bar", "point", "boxplot")) {0.9} else {0}
   }
   if (is.null(errorbar.width)) {
-    errorbar.width <- if (geom %in% c("bar", "point")) {0.9} else {0.5}
+    errorbar.width <- if (geom == "point") {
+      0.9
+    } else if (geom == "bar") {
+      0.75
+    } else {0.5}
   }
 
   if (!is.null(modx)) {
@@ -752,7 +780,7 @@ plot_cat <- function(predictions, pred, modx = NULL, mod2 = NULL,
     # Transform weights so they have mean = 1
     const <- length(wts) / sum(wts) # scaling constant
     # make the range of values larger, but only if there are non-1 weights
-    const <- const * (1 * all(wts == 1) + point.size)
+    const <- const * (1 * all(wts == 1) * point.size)
     wts <- const * wts
     # Append weights to data
     d[,"the_weights"] <- wts

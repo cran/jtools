@@ -43,12 +43,12 @@ cat_wrap <- function(..., brk = "") {
 orange <- crayon::make_style("orange")
 
 # Like cat_wrap but for warnings
-warn_wrap <- function(..., call. = TRUE, brk = "\n") {
+warn_wrap <- function(..., call. = FALSE, brk = "\n") {
   warning(orange(wrap_str(...)), brk, call. = call.)
 }
 
 # Like cat_wrap but for errors
-stop_wrap <- function(..., call. = TRUE, brk = "\n") {
+stop_wrap <- function(..., call. = FALSE, brk = "\n") {
   stop(red(wrap_str(...)), brk, call. = call.)
 }
 
@@ -348,8 +348,9 @@ create_table <- function(params, which.cols, ivs) {
 
 ## Decide which columns will be included in the output
 
-which_columns <- function(which.cols, confint, ci.labs, vifs, pvals, t.col,
-                          exp = NULL, others = NULL) {
+which_columns <- function(which.cols, margins = FALSE,
+                          confint, ci.labs, vifs, pvals, t.col,
+                          exp = NULL, df = FALSE, others = NULL) {
 
   if (!is.null(which.cols)) {
     return(which.cols)
@@ -364,7 +365,11 @@ which_columns <- function(which.cols, confint, ci.labs, vifs, pvals, t.col,
     } else {
       cols <- c(cols, "S.E.")
     }
+    if (margins == TRUE) {
+      cols <- c(cols, "A.M.E.")
+    }
     cols <- c(cols, t.col)
+    if (df == TRUE) {cols <- c(cols, "d.f.")}
     if (pvals == TRUE) {cols <- c(cols, "p")}
     if (vifs == TRUE) {cols <- c(cols, "VIF")}
     if (!is.null(others)) {cols <- c(cols, others)}
@@ -546,6 +551,16 @@ print_mod_info <- function(missing, n, dv, type) {
   cat(italic("Type:"), type, "\n\n")
 }
 
+## Take model info and save as list
+
+mod_info_list <- function(missing, n, dv, type) {
+  out <- list(dv = dv, n = n, type = type)
+  if (!is.null(missing) && missing != 0) {
+    out$missing <- missing
+  }
+  return(out)
+}
+
 ## Print model fit info
 
 print_mod_fit <- function(stats) {
@@ -576,6 +591,32 @@ print_se_info <- function(robust, use_cluster, manual = NULL, ...) {
     } else if (use_cluster == TRUE) {
 
       cat(" Cluster-robust, ", italic("type = "), robust, "\n", sep = "")
+
+    }
+
+  }
+
+}
+
+## Save SE info as string
+
+get_se_info <- function(robust, use_cluster, manual = NULL, ...) {
+
+  if (identical(FALSE, robust)) {
+
+    ifelse(is.null(manual), no = manual, yes = "MLE")
+
+  } else {
+
+    if (robust == TRUE) {robust <- "HC3"}
+
+    if (use_cluster == FALSE) {
+
+      paste0("Robust, type = ", robust)
+
+    } else if (use_cluster == TRUE) {
+
+      paste0("Cluster-robust, type = ", robust)
 
     }
 
@@ -637,6 +678,46 @@ mod_rank <- function(model) {
   return(preds + int)
 }
 
+hux_theme <- function(table, align_body = "right", caption = NULL,
+                      use_colnames = TRUE, width = .2) {
+  # table <- huxtable::theme_striped(table, header_row = FALSE,
+  #                                  header_col = FALSE)
+  table <- huxtable::set_background_color(table, huxtable::odds,
+                                          huxtable::everywhere,
+                                          grDevices::grey(0.9))
+  if (use_colnames == TRUE) {
+    table <- huxtable::add_colnames(table)
+    table <- huxtable::set_bold(table, row = 1, col = 1:ncol(table),
+                                value = TRUE)
+    table <- huxtable::set_align(table, row = 1, col = 1:ncol(table), "center")
+    table <- huxtable::set_bottom_border(table, row = 1, col = 1:ncol(table), 1)
+  }
+
+  body_rows <- (1 + use_colnames):nrow(table)
+  table <- huxtable::set_bold(table, row = body_rows, col = 1, value = TRUE)
+  table <- huxtable::set_align(table, row = body_rows, col = 2:ncol(table),
+                               align_body)
+  table <- huxtable::set_align(table, row = body_rows, col = 1, "left")
+
+  if (!is.null(caption)) {
+    table <- huxtable::insert_row(table,
+                                  c(caption, rep(NA, times = ncol(table) - 1)),
+                                  after = 0)
+    table <- huxtable::set_colspan(table, row = 1, col = 1, ncol(table))
+    table <- huxtable::set_background_color(table, 1, huxtable::everywhere,
+                                            "white")
+    table <- huxtable::set_bold(table, row = 1, col = 1:ncol(table),
+                                value = TRUE)
+    table <- huxtable::set_align(table, row = 1, col = 1:ncol(table), "center")
+    table <- huxtable::set_bottom_border(table, row = 1, col = 1:ncol(table), 1)
+  }
+
+  table <- huxtable::set_position(table, "left")
+  # table <- huxtable::set_width(table, width)
+
+  return(table)
+}
+
 ### pseudo-R2 ################################################################
 
 ## This is taken from pscl package, I don't want to list it as import for
@@ -685,8 +766,36 @@ pR2 <- function(object) {
 
   dv <- names(frame)[1]
   form <- as.formula(paste(paste0("`", dv, "`", "~ 1")))
-  objectNull <- j_update(object, formula = form, weights = .weights,
-                         offset = .offset, data = frame)
+  # Create new environment
+  e <- new.env()
+  # Add everything from the model's data to this environment
+  lapply(names(frame), function(x, env, f) {env[[x]] <- f[[x]]}, env = e,
+         f = frame)
+  # Add the offset to the environment
+  e$`.offset` <- .offset
+  # Add the weights to the environment
+  e$`.weights` <- .weights
+  # Add the environment to the formula
+  environment(form) <- e
+
+  # Get the model's original call
+  call <- getCall(object)
+  # Replace that call's formula with this new one that includes the modified
+  # environment. Then set the `data` arg of the call to NULL so it looks only
+  # in the new, modified environment
+  call$formula <- form
+  call$data <- NULL
+  # Conditionally add the names of the offset and weights args
+  if (!is.null(.offset)) {
+    call$offset <- quote(.offset)
+  }
+  if (!is.null(.weights)) {
+    call$weights <- quote(.weights)
+  }
+  # Update the model
+  objectNull <- eval(call)
+  # objectNull <- j_update(object, formula = form, weights = .weights,
+  #                        offset = .offset, data = frame)
 
   llhNull <- getLL(objectNull)
   n <- dim(object$model)[1]
@@ -910,6 +1019,8 @@ j_update <- function(mod, formula = NULL, data = NULL, offset = NULL,
 
   eval(call, env, call.env)
 }
+
+
 
 ### cut2 ######################################################################
 

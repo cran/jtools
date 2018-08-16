@@ -2,13 +2,18 @@
 required <- c("survey", "huxtable", "broom", "lme4", "quantreg")
 if (!all(sapply(required, requireNamespace, quietly = TRUE)))
   knitr::opts_chunk$set(eval = FALSE)
-knitr::opts_chunk$set(message = F, warning = F, fig.width = 6, fig.height = 5)
+knitr::opts_chunk$set(message = F, warning = F, fig.width = 6, fig.height = 5,
+                      render = knitr::normal_print
+                      )
 library(jtools)
 
 ## ------------------------------------------------------------------------
 # Fit model
 states <- as.data.frame(state.x77)
 fit <- lm(Income ~ Frost + Illiteracy + Murder, data = states)
+summ(fit)
+
+## ----render = 'knit_print'-----------------------------------------------
 summ(fit)
 
 ## ------------------------------------------------------------------------
@@ -93,15 +98,15 @@ effect_plot(fitg, pred = mpg, plot.points = TRUE)
 #  export_summs(fit, fit2, scale = TRUE)
 
 ## ----echo = FALSE, results = 'asis'--------------------------------------
-export_summs(fit, fit2, scale = TRUE)
+huxtable::print_html(export_summs(fit, fit2, scale = TRUE))
 
 ## ----eval = FALSE--------------------------------------------------------
 #  export_summs(fit, fit2, scale = TRUE,
 #               error_format = "[{conf.low}, {conf.high}]")
 
 ## ----echo = FALSE, results = 'asis'--------------------------------------
-export_summs(fit, fit2, scale = TRUE,
-             error_format = "[{conf.low}, {conf.high}]")
+huxtable::print_html(export_summs(fit, fit2, scale = TRUE,
+                     error_format = "[{conf.low}, {conf.high}]"))
 
 ## ----eval = FALSE--------------------------------------------------------
 #  export_summs(fit, fit2, scale = TRUE, to.file = "docx", file.name = "test.docx")
