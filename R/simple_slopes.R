@@ -266,9 +266,7 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modx.values = NULL,
   if (is.factor(d[[pred]])) {
     # I could assume the factor is properly ordered, but that's too risky
     stop(wrap_str("Focal predictor (\"pred\") cannot be a factor. Either
-          use it as modx, convert it to a numeric dummy variable
-          or use the cat_plot function for factor by factor interaction
-          plots."))
+          use it as modx or convert it to a numeric dummy variable."))
   }
 
   # weights?
@@ -373,7 +371,7 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modx.values = NULL,
                         modx.labels = modx.labels,
                         any.mod2 = !is.null(mod2), sims = TRUE)
 
-  if (is.factor(d[[modx]]) & johnson_neyman == TRUE) {
+  if (!is.numeric(d[[modx]]) & johnson_neyman == TRUE) {
         warn_wrap("Johnson-Neyman intervals are not available for factor
                    moderators.", call. = FALSE)
         johnson_neyman <- FALSE
@@ -391,11 +389,11 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modx.values = NULL,
   }
 
   # Don't want def = TRUE for factors even though they are character
-  if (is.factor(d[[modx]])) {ss <- structure(ss, def = FALSE)}
+  if (!is.numeric(d[[modx]])) {ss <- structure(ss, def = FALSE)}
 
   if (!is.null(mod2)) {
 
-    if (!is.factor(d[[mod2]])) {
+    if (is.numeric(d[[mod2]])) {
       mod2vals2 <- mod_vals(d, mod2, mod2.values, survey, wts, design,
                             modx.labels = mod2.labels, any.mod2 = !is.null(mod2),
                             sims = TRUE)
@@ -404,12 +402,12 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modx.values = NULL,
       if (is.null(mod2.values)) {
         mod2vals2 <- levels(d[[mod2]])
       } else {
-        if (all(mod2.values %in% levels(d[[mod2]]))) {
+        if (all(mod2.values %in% unique(d[[mod2]]))) {
           mod2vals2 <- mod2.values
         } else {
           warn_wrap("mod2.values argument must include only levels of the
                     factor. Using all factor levels instead.", call. = FALSE)
-          mod2vals2 <- levels(d[[mod2]])
+          mod2vals2 <- unique(d[[mod2]])
         }
       }
 
@@ -427,7 +425,7 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modx.values = NULL,
     }
 
     # Don't want def = TRUE for factors even though they are character
-    if (is.factor(d[[mod2]])) {ss <- structure(ss, def2 = FALSE)}
+    if (!is.numeric(d[[mod2]])) {ss <- structure(ss, def2 = FALSE)}
 
   }
 
@@ -498,10 +496,12 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modx.values = NULL,
     if (!is.null(mod2)) { # We *do* need to adjust the 2nd moderator for J-N
 
       # The moderator value-adjusted variable
-      if (!is.factor(dt[[mod2]])) {
+      if (is.numeric(dt[[mod2]])) {
         dt[[mod2]] <- dt[[mod2]] - mod2vals2[j]
       } else {
-        dt[[mod2]] <- relevel(dt[[mod2]], ref = mod2vals2[j])
+        dt[[mod2]] <- factor(dt[[mod2]])
+        dt[[mod2]] <- relevel(dt[[mod2]], ref = as.character(mod2vals2[j]))
+        dt[[mod2]] <- stats::C(dt[[mod2]], "contr.treatment")
       }
 
     }
@@ -559,19 +559,23 @@ sim_slopes <- function(model, pred, modx, mod2 = NULL, modx.values = NULL,
     if (survey == TRUE) {designt <- design}
 
     # The moderator value-adjusted variable
-    if (!is.factor(dt[[modx]])) {
+    if (is.numeric(dt[[modx]])) {
       dt[[modx]] <- dt[[modx]] - modxvals2[i]
     } else {
-      dt[[modx]] <- relevel(dt[[modx]], ref = modxvals2[i])
+      dt[[modx]] <- factor(dt[[modx]])
+      dt[[modx]] <- relevel(dt[[modx]], ref = as.character(modxvals2[i]))
+      dt[[modx]] <- stats::C(dt[[modx]], "contr.treatment")
     }
 
     if (!is.null(mod2)) {
 
       # The moderator value-adjusted variable
-      if (!is.factor(dt[[mod2]])) {
+      if (is.numeric(dt[[mod2]])) {
         dt[[mod2]] <- dt[[mod2]] - mod2vals2[j]
       } else {
-        dt[[mod2]] <- relevel(dt[[mod2]], ref = mod2vals2[j])
+        dt[[mod2]] <- factor(dt[[mod2]])
+        dt[[mod2]] <- relevel(dt[[mod2]], ref = as.character(mod2vals2[j]))
+        dt[[mod2]] <- stats::C(dt[[mod2]], "contr.treatment")
       }
 
 
@@ -920,8 +924,14 @@ print.sim_slopes <- function(x, ...) {
 
 #### alternate output formats ################################################
 
-#' @export tidy.sim_slopes
 #' @rdname glance.summ
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(broom::tidy, sim_slopes)
+#' } else {
+#'   export(tidy.sim_slopes)
+#' }
+
 
 tidy.sim_slopes <- function(x, conf.level = .95, ...) {
 
@@ -1007,7 +1017,12 @@ tidy.sim_slopes <- function(x, conf.level = .95, ...) {
 
 }
 
-#' @export glance.sim_slopes
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(broom::glance, sim_slopes)
+#' } else {
+#'   export(glance.sim_slopes)
+#' }
 #' @rdname glance.summ
 
 glance.sim_slopes <- function(x, ...) {
@@ -1045,8 +1060,13 @@ nobs.sim_slopes <- function(object, ...) {
 #'
 #' For more on what you can do with a `huxtable`, see \pkg{huxtable}.
 #'
-#' @export as_huxtable.sim_slopes
 #' @rdname as_huxtable.sim_slopes
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(huxtable::as_huxtable, sim_slopes)
+#' } else {
+#'   export(as_huxtable.sim_slopes)
+#' }
 
 as_huxtable.sim_slopes <-  function(x, format = "{estimate} ({std.error})",
   sig.levels = c(`***` = .001, `**` = .01, `*` = .05, `#` = .1),

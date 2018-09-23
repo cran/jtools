@@ -1,7 +1,7 @@
 Package: jtools
 Type: Package
 Title: Analysis and Presentation of Social Scientific Data
-Version: 1.1.0
+Version: 1.1.1
 Authors@R: person(c("Jacob","A."), "Long", email = "long.1377@osu.edu",
   role = c("aut", "cre"), comment = c(ORCID = "0000-0002-1582-6214"))
 Description: This is a collection of tools that the author (Jacob) has written
@@ -14,16 +14,16 @@ BugReports: https://github.com/jacob-long/jtools/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Imports: ggplot2, crayon, cli
+Imports: ggplot2, crayon, cli, magrittr
 Suggests: boot, broom, brms, cowplot, ggstance, glue, huxtable (>=
-        3.0.0), lme4, lmerTest, methods, pbkrtest, quantreg,
-        RColorBrewer, rstanarm, sandwich, stats4, survey, weights,
-        knitr, rmarkdown, testthat
-RoxygenNote: 6.1.0
+        3.0.0), kableExtra, lme4, lmerTest, methods, pbkrtest,
+        quantreg, RColorBrewer, rstanarm, sandwich, stats4, survey,
+        weights, knitr, rmarkdown, rmdformats, testthat
+RoxygenNote: 6.1.0.9000
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2018-08-15 23:22:10 UTC; Jacob
+Packaged: 2018-09-22 15:53:03 UTC; jlong
 Author: Jacob A. Long [aut, cre] (<https://orcid.org/0000-0002-1582-6214>)
 Maintainer: Jacob A. Long <long.1377@osu.edu>
 Repository: CRAN
-Date/Publication: 2018-08-16 10:30:10 UTC
+Date/Publication: 2018-09-23 13:30:02 UTC

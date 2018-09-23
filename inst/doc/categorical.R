@@ -1,5 +1,6 @@
 ## ----echo=FALSE----------------------------------------------------------
-knitr::opts_chunk$set(message = F, warning = F, fig.width = 6, fig.height = 5)
+knitr::opts_chunk$set(message = F, warning = F, fig.width = 6, fig.height = 5,
+                      fig.options = list(type = "cairo"))
 library(jtools)
 
 ## ------------------------------------------------------------------------

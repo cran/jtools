@@ -148,12 +148,12 @@ mod_vals <- function(d, modx, modx.values, survey, weights,
                      sims = FALSE, facet.modx = FALSE, force.cat = FALSE) {
 
   # Get moderator mean
-  if (survey == FALSE & !is.factor(d[[modx]]) & !is.character(d[[modx]])) {
+  if (survey == FALSE & is.numeric(d[[modx]])) {
 
     modmean <- weighted.mean(d[[modx]], weights, na.rm = TRUE)
     modsd <- wtd.sd(d[[modx]], weights)
 
-  } else if (survey == TRUE & !is.factor(d[[modx]]) & !is.character(d[[modx]])) {
+  } else if (survey == TRUE & is.numeric(d[[modx]])) {
 
     modsd <- svysd(as.formula(paste("~", modx, sep = "")), design = design)
     # Have to construct the formula this way since the syntax for svymean
@@ -168,7 +168,7 @@ mod_vals <- function(d, modx, modx.values, survey, weights,
   if (is.character(modx.values) & length(modx.values) == 1) {char1 <- TRUE}
 
   # If using a preset, send to auto_mod_vals function
-  if (!is.factor(d[[modx]]) && force.cat == FALSE &&
+  if (is.numeric(d[[modx]]) && force.cat == FALSE &&
       (is.null(modx.values) | is.character(modx.values))) {
 
     modxvals2 <- auto_mod_vals(d, modx.values = modx.values, modx = modx,
@@ -180,7 +180,7 @@ mod_vals <- function(d, modx, modx.values, survey, weights,
   }
 
   # For user-specified numbers or factors, go here
-  if (is.null(modx.values) && (is.factor(d[[modx]]) | force.cat == TRUE)) {
+  if (is.null(modx.values) && (!is.numeric(d[[modx]]) | force.cat == TRUE)) {
 
     modxvals2 <- ulevels(d[[modx]])
     if (is.null(modx.labels)) {
@@ -194,8 +194,8 @@ mod_vals <- function(d, modx, modx.values, survey, weights,
     }
     names(modxvals2) <- modx.labels
 
-  } else if (!is.null(modx.values) & ((is.numeric(modx.values) & force.cat == FALSE) |
-                                   char1 == FALSE)) {
+  } else if (!is.null(modx.values) &
+             ((is.numeric(modx.values) & force.cat == FALSE) | char1 == FALSE)) {
     # Use user-supplied values otherwise
 
     if (!is.null(modx.labels)) {
@@ -518,8 +518,13 @@ center_values_non_survey <- function(d, weights, omitvars, centered) {
       centered <- centered[centered %nin% omitvars]
     }
     if (length(centered) > 0) {
-      vals <- sapply(d[centered], weighted.mean, weights = weights,
-                     na.rm = TRUE)
+      vals <- lapply(d[centered], function(x, weights, na.rm) {
+        if (is.numeric(x)) {
+          return(weighted.mean(x, weights, na.rm = na.rm))
+        } else {
+          return(levels(factor(x))[1])
+        }
+      }, weights = weights, na.rm = TRUE)
     }
 
   } else if (centered == "all") {
@@ -528,7 +533,13 @@ center_values_non_survey <- function(d, weights, omitvars, centered) {
     vars <- names(d)[names(d) %nin% omitvars]
 
     if (length(vars) > 0) {
-      vals <- sapply(d[vars], weighted.mean, weights = weights)
+      vals <- lapply(d[vars], function(x, weights, na.rm) {
+        if (is.numeric(x)) {
+          return(weighted.mean(x, weights, na.rm = na.rm))
+        } else {
+          return(levels(factor(x))[1])
+        }
+      }, weights = weights, na.rm = TRUE)
     }
 
   } else if (centered == "none") {
@@ -562,7 +573,20 @@ center_values_survey <- function(d, omitvars, design = NULL,
     }
 
     if (length(centered) > 0) {
-      vals <- survey::svymean(survey::make.formula(centered), design)
+      # Pulling out non-numeric vars
+      facvars <- sapply(d[centered], is.numeric)
+      facvars <- names(facvars[facvars == FALSE])
+      if (length(facvars) > 0) {centered <- centered[centered %nin% facvars]}
+      
+      if (length(centered) > 0) { # might have just pulled out all non-focals
+        vals <- survey::svymean(survey::make.formula(centered), design)
+      } else {vals <- NULL}
+      
+      if (length(facvars) > 0) { # return ref level of non-numerics
+        vals <- c(vals, lapply(d[facvars], function(x) {
+          return(levels(factor(x))[1])
+        }))
+      }
     }
     d <- design$variables
 
@@ -571,7 +595,19 @@ center_values_survey <- function(d, omitvars, design = NULL,
     vars <- names(d)[names(d) %nin% omitvars]
 
     if (length(vars) > 0) {
-      vals <- survey::svymean(survey::make.formula(vars), design)
+      facvars <- sapply(d[vars], is.numeric)
+      facvars <- names(facvars[facvars == FALSE])
+      if (length(facvars) > 0) {vars <- vars[vars %nin% facvars]}
+      
+      if (length(vars) > 0) { # might have just pulled out all non-focals
+        vals <- survey::svymean(survey::make.formula(vars), design)
+      } else {vals <- NULL}
+      
+      if (length(facvars) > 0) { # return ref level of non-numerics
+        vals <- c(vals, lapply(d[facvars], function(x) {
+          return(levels(factor(x))[1])
+        }))
+      }
     }
 
   } else if (centered == "none") {
@@ -687,7 +723,7 @@ data_checks <- function(model, data, pred.values = NULL,
   }
 
   facvars <- names(which(sapply(d, function(x) {
-    is.factor(x) | is.character(x)
+    !is.numeric(x)
     })
   ))
 
@@ -717,7 +753,7 @@ prep_data <- function(model, d, pred, modx, mod2, pred.values = NULL,
 
   }
 
-  if (is.factor(d[[pred]]) | is.character(d[[pred]])) {
+  if (!is.numeric(d[[pred]])) {
     facpred <- TRUE
     if (is.character(d[[pred]])) {d[[pred]] <- factor(d[[pred]])}
   } else if (force.cat == FALSE) {
@@ -727,15 +763,9 @@ prep_data <- function(model, d, pred, modx, mod2, pred.values = NULL,
   }
 
   # Setting default for colors
-  if (!is.null(modx) && (is.factor(d[[modx]]) | is.character(d[[modx]]))) {
+  if (!is.null(modx) && !is.numeric(d[[modx]])) {
     facmod <- TRUE
     if (is.character(d[[modx]])) {d[[modx]] <- factor(d[[modx]])}
-    # # Unrelated, but good place to throw a warning
-    # if (!is.null(modxvals) && length(modxvals) != nlevels(d[[modx]])) {
-    #   warning("All levels of factor must be used. Ignoring modxvals",
-    #           " argument...")
-    #   modxvals <- NULL
-    # }
   } else if (force.cat == FALSE | is.null(modx)) {
     facmod <- FALSE
   } else if (!is.null(modx)) {
@@ -747,11 +777,9 @@ prep_data <- function(model, d, pred, modx, mod2, pred.values = NULL,
   }
 
   # Fix character mod2 as well
-  if (!is.null(mod2) && is.factor(d[[mod2]])) {
+  if (!is.null(mod2) && !is.numeric(d[[mod2]])) {
     facmod2 <- TRUE
-  } else if (!is.null(mod2) && is.character(d[[mod2]])) {
-    d[[mod2]] <- factor(d[[mod2]])
-    facmod2 <- TRUE
+    if (is.character(d[[mod2]])) {d[[mod2]] <- factor(d[[mod2]])}
   } else if (force.cat == FALSE | is.null(mod2)) {
     facmod2 <- FALSE
   } else if (!is.null(mod2)) {
@@ -784,7 +812,8 @@ prep_data <- function(model, d, pred, modx, mod2, pred.values = NULL,
     facvars[facvars %nin% c(pred, resp, modx, mod2, wname, offname)]
 
   # Create omitvars variable; we don't center any of these
-  omitvars <- c(pred, resp, modx, mod2, wname, offname, facvars,
+  omitvars <- c(pred, resp, modx, mod2, wname, offname, 
+                # facvars,
                 "(weights)", "(offset)")
 
   if (survey == FALSE) {
@@ -1094,7 +1123,7 @@ make_pred_frame_cont <- function(d, pred, modx, modxvals2, mod2, mod2vals2,
   if (!is.null(vals)) {
     vals <- vals[names(vals) %nin% c(offname,modx,mod2,pred,resp)]
     for (var in names(vals)) {
-      pm[[var]] <- rep(vals[var], times = nrow(pm))
+      pm[[var]] <- rep(vals[[var]], times = nrow(pm))
     }
   }
 
@@ -1186,7 +1215,7 @@ make_pred_frame_cat <- function(d, pred,
   if (!is.null(vals)) {
     vals <- vals[names(vals) %nin% c(offname, modx, mod2, pred, resp)]
     for (var in names(vals)) {
-      pm[[var]] <- rep(vals[var], times = nrow(pm))
+      pm[[var]] <- rep(vals[[var]], times = nrow(pm))
     }
   }
 

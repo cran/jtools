@@ -15,7 +15,8 @@
   exp = FALSE, t.df = NULL, model.info = getOption("summ-model.info",
   TRUE), model.fit = getOption("summ-model.fit", TRUE),
   re.variance = getOption("summ-re.variance", c("sd", "var")),
-  which.cols = NULL, ...)
+  which.cols = NULL, re.table = getOption("summ-re.table", TRUE),
+  groups.table = getOption("summ-groups.table", TRUE), ...)
 }
 \arguments{
 \item{model}{A \code{\link[lme4]{merMod}} object.}
@@ -84,6 +85,12 @@ versions of \code{jtools}, is \code{"sd"}. Use \code{"var"} to get the variance 
 \item{which.cols}{Developmental feature. By providing columns by name,
 you can add/remove/reorder requested columns in the output. Not fully
 supported, for now.}
+
+\item{re.table}{Show table summarizing variance of random effects? Default
+is TRUE.}
+
+\item{groups.table}{Show table summarizing the grouping variables? Default
+is TRUE.}
 
 \item{...}{This just captures extra arguments that may only work for other
 types of models.}
@@ -210,7 +217,7 @@ if (requireNamespace("lme4")) {
 
 }
 \references{
-Johnson, P. C. D. (2014). Extension of Nakagawa & Schielzeth’s
+Johnson, P. C. D. (2014). Extension of Nakagawa & Schielzeth's
 $R^{2}_{GLMM}$ to random slopes models. \emph{Methods in Ecology and
 Evolution}, \emph{5}, 944–946. \url{https://doi.org/10.1111/2041-210X.12225}
 

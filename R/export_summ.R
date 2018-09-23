@@ -721,9 +721,14 @@ make_tidies <- function(mods, ex_args, ci_level, model.names, omit.coefs,
     if (!is.null(ex_args)) {
 
       method_stub <- find_S3_class("tidy", mods[[i]], package = "broom")
+      if (getRversion() < 3.5) {
       # getS3method() only available in R >= 3.3
-      the_method <- get(paste0("tidy.", method_stub), asNamespace("broom"),
-                        mode = "function")
+        the_method <- get(paste0("tidy.", method_stub), asNamespace("broom"),
+                          mode = "function")
+      } else {
+        the_method <- utils::getS3method("tidy", method_stub,
+                                         envir = asNamespace("broom"))
+      }
       method_args <- formals(the_method)
 
       method_args <-
@@ -863,8 +868,13 @@ get_dist_curves <- function(tidies, order, models, rescale.distributions) {
 
 }
 
-#' @export tidy.summ
 #' @rdname glance.summ
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(broom::tidy, summ)
+#' } else {
+#'   export(tidy.summ)
+#' }
 
 tidy.summ <- function(x, conf.int = FALSE, conf.level = .95, ...) {
 
@@ -986,7 +996,37 @@ tidy.summ <- function(x, conf.int = FALSE, conf.level = .95, ...) {
 #'  \code{\link[broom]{glance}}
 #'
 #' @rdname glance.summ
-#' @export glance.summ.lm
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(broom::glance, summ.lm)
+#' } else {
+#'   export(glance.summ.lm)
+#' }
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(broom::glance, summ.glm)
+#' } else {
+#'   export(glance.summ.glm)
+#' }
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(broom::glance, summ.svyglm)
+#' } else {
+#'   export(glance.summ.svyglm)
+#' }
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(broom::glance, summ.merMod)
+#' } else {
+#'   export(glance.summ.merMod)
+#' }
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(broom::glance, summ.rq)
+#' } else {
+#'   export(glance.summ.rq)
+#' }
+
 
 glance.summ.lm <- function(x, ...) {
 
@@ -995,7 +1035,6 @@ glance.summ.lm <- function(x, ...) {
 
 }
 
-#' @export glance.summ.glm
 #' @rdname glance.summ
 
 glance.summ.glm <- function(x, ...) {
@@ -1007,7 +1046,6 @@ glance.summ.glm <- function(x, ...) {
 
 }
 
-#' @export glance.summ.svyglm
 #' @importFrom stats deviance df.residual
 #' @rdname glance.summ
 
@@ -1046,7 +1084,6 @@ glance.summ.svyglm <- function(x, ...) {
 
 }
 
-#' @export glance.summ.merMod
 #' @rdname glance.summ
 
 glance.summ.merMod <- function(x, ...) {

@@ -12,7 +12,7 @@
 
 <meta name="author" content="Jacob Long" />
 
-<meta name="date" content="2018-08-15" />
+<meta name="date" content="2018-09-22" />
 
 <title>Calculate correlations and correlation tables with complex survey data</title>
 
@@ -278,7 +278,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 
 <h1 class="title toc-ignore">Calculate correlations and correlation tables with complex survey data</h1>
 <h4 class="author"><em>Jacob Long</em></h4>
-<h4 class="date"><em>2018-08-15</em></h4>
+<h4 class="date"><em>2018-09-22</em></h4>
 
 
 
@@ -292,14 +292,14 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <h2>Basic use</h2>
 <p>The necessary arguments are no different than when using <code>svyvar</code>. Specify, using an equation, which variables (and from which design) to include. It doesn’t matter which side of the equation the variables are on.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</a></code></pre></div>
-<pre><code>##       api00 api99
-## api00  1.00  0.98
-## api99  0.98  1.00</code></pre>
+<pre><code>      api00 api99
+api00  1.00  0.98
+api99  0.98  1.00</code></pre>
 <p>You can specify with the <code>digits =</code> argument how many digits past the decimal point should be printed.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>)</a></code></pre></div>
-<pre><code>##        api00  api99
-## api00 1.0000 0.9759
-## api99 0.9759 1.0000</code></pre>
+<pre><code>       api00  api99
+api00 1.0000 0.9759
+api99 0.9759 1.0000</code></pre>
 <p>Any other arguments that you would normally pass to <code>svyvar</code> will be used as well, though in some cases it may not affect the output.</p>
 </div>
 <div id="statistical-significance-tests" class="section level2">
@@ -307,74 +307,74 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <p>One thing that <code>survey</code> won’t do for you is give you <em>p</em> values for the null hypothesis that <span class="math inline">\(r = 0\)</span>. While at first blush finding the <em>p</em> value might seem like a simple procedure, complex surveys will almost always violate the important distributional assumptions that go along with simple hypothesis tests of the correlation coefficient. There is not a clear consensus on the appropriate way to conduct hypothesis tests in this context, due in part to the fact that most analyses of complex surveys occurs in the context of multiple regression rather than simple bivariate cases.</p>
 <p>If <code>sig.stats = TRUE</code>, then <code>svycor</code> will use the <code>wtd.cor</code> function from the <code>weights</code> package to conduct hypothesis tests. The <em>p</em> values are derived from a bootstrap procedure in which the weights define sampling probability. The <code>bootn =</code> argument is given to <code>wtd.cor</code> to define the number of simulations to run. This can significantly increase the running time for large samples and/or large numbers of simulations. The <code>mean1</code> argument tells <code>wtd.cor</code> whether it should treat your sample size as the number of observations in the survey design (the number of rows in the data frame) or the sum of the weights. Usually, the former is desired, so the default value of <code>mean1</code> is <code>TRUE</code>.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>, <span class="dt">sig.stats =</span> <span class="ot">TRUE</span>, <span class="dt">bootn =</span> <span class="dv">2000</span>, <span class="dt">mean1 =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
-<pre><code>##       api00   api99  
-## api00 1       0.9759*
-## api99 0.9759* 1</code></pre>
+<pre><code>      api00   api99  
+api00 1       0.9759*
+api99 0.9759* 1      </code></pre>
 <p>When using <code>sig.stats = TRUE</code>, the correlation parameter estimates come from the bootstrap procedure rather than the simpler method based on the survey-weighted covariance matrix when <code>sig.stats = FALSE</code>.</p>
 <p>By saving the output of the function, you can extract non-rounded coefficients, <em>p</em> values, and standard errors.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" data-line-number="1">c &lt;-<span class="st"> </span><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>, <span class="dt">sig.stats =</span> <span class="ot">TRUE</span>, <span class="dt">bootn =</span> <span class="dv">2000</span>, <span class="dt">mean1 =</span> <span class="ot">TRUE</span>)</a>
 <a class="sourceLine" id="cb8-2" data-line-number="2"></a>
 <a class="sourceLine" id="cb8-3" data-line-number="3">c<span class="op">$</span>cors</a></code></pre></div>
-<pre><code>##           api00     api99
-## api00 1.0000000 0.9759047
-## api99 0.9759047 1.0000000</code></pre>
+<pre><code>          api00     api99
+api00 1.0000000 0.9759047
+api99 0.9759047 1.0000000</code></pre>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" data-line-number="1">c<span class="op">$</span>p.values</a></code></pre></div>
-<pre><code>##       api00 api99
-## api00     0     0
-## api99     0     0</code></pre>
+<pre><code>      api00 api99
+api00     0     0
+api99     0     0</code></pre>
 <div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" data-line-number="1">c<span class="op">$</span>std.err</a></code></pre></div>
-<pre><code>##             api00       api99
-## api00 0.000000000 0.003655333
-## api99 0.003655333 0.000000000</code></pre>
+<pre><code>            api00       api99
+api00 0.000000000 0.003655333
+api99 0.003655333 0.000000000</code></pre>
 </div>
 <div id="technical-details" class="section level2">
 <h2>Technical details</h2>
 <p>The heavy lifting behind the scenes is done by <code>svyvar</code>, which from its output you may not realize also calculates covariance.</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" data-line-number="1"><span class="kw">svyvar</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</a></code></pre></div>
-<pre><code>##       variance     SE
-## api00    15191 1255.7
-## api99    16518 1318.4</code></pre>
+<pre><code>      variance     SE
+api00    15191 1255.7
+api99    16518 1318.4</code></pre>
 <p>But if you save the <code>svyvar</code> object, you can see that there’s more than meets the eye.</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" data-line-number="1">var &lt;-<span class="st"> </span><span class="kw">svyvar</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</a>
 <a class="sourceLine" id="cb16-2" data-line-number="2">var &lt;-<span class="st"> </span><span class="kw">as.matrix</span>(var)</a>
 <a class="sourceLine" id="cb16-3" data-line-number="3">var</a></code></pre></div>
-<pre><code>##          api00    api99
-## api00 15190.59 15458.83
-## api99 15458.83 16518.24
-## attr(,&quot;var&quot;)
-##         api00   api00   api99   api99
-## api00 1576883 1580654 1580654 1561998
-## api00 1580654 1630856 1630856 1657352
-## api99 1580654 1630856 1630856 1657352
-## api99 1561998 1657352 1657352 1738266
-## attr(,&quot;statistic&quot;)
-## [1] &quot;variance&quot;</code></pre>
+<pre><code>         api00    api99
+api00 15190.59 15458.83
+api99 15458.83 16518.24
+attr(,&quot;var&quot;)
+        api00   api00   api99   api99
+api00 1576883 1580654 1580654 1561998
+api00 1580654 1630856 1630856 1657352
+api99 1580654 1630856 1630856 1657352
+api99 1561998 1657352 1657352 1738266
+attr(,&quot;statistic&quot;)
+[1] &quot;variance&quot;</code></pre>
 <p>Once we know that, it’s just a matter of using R’s <code>cov2cor</code> function and cleaning up the output.</p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1">cor &lt;-<span class="st"> </span><span class="kw">cov2cor</span>(var)</a>
 <a class="sourceLine" id="cb18-2" data-line-number="2">cor</a></code></pre></div>
-<pre><code>##           api00     api99
-## api00 1.0000000 0.9759047
-## api99 0.9759047 1.0000000
-## attr(,&quot;var&quot;)
-##         api00   api00   api99   api99
-## api00 1576883 1580654 1580654 1561998
-## api00 1580654 1630856 1630856 1657352
-## api99 1580654 1630856 1630856 1657352
-## api99 1561998 1657352 1657352 1738266
-## attr(,&quot;statistic&quot;)
-## [1] &quot;variance&quot;</code></pre>
+<pre><code>          api00     api99
+api00 1.0000000 0.9759047
+api99 0.9759047 1.0000000
+attr(,&quot;var&quot;)
+        api00   api00   api99   api99
+api00 1576883 1580654 1580654 1561998
+api00 1580654 1630856 1630856 1657352
+api99 1580654 1630856 1630856 1657352
+api99 1561998 1657352 1657352 1738266
+attr(,&quot;statistic&quot;)
+[1] &quot;variance&quot;</code></pre>
 <p>Now to get rid of that covariance matrix…</p>
 <div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" data-line-number="1">cor &lt;-<span class="st"> </span>cor[<span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(cor), <span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(cor)]</a>
 <a class="sourceLine" id="cb20-2" data-line-number="2">cor</a></code></pre></div>
-<pre><code>##           api00     api99
-## api00 1.0000000 0.9759047
-## api99 0.9759047 1.0000000</code></pre>
+<pre><code>          api00     api99
+api00 1.0000000 0.9759047
+api99 0.9759047 1.0000000</code></pre>
 <p><code>svycor</code> has its own print method, so you won’t see so many digits past the decimal point. You can extract the un-rounded matrix, however.</p>
 <div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb22-1" data-line-number="1">out &lt;-<span class="st"> </span><span class="kw">svycor</span>(<span class="op">~</span>api99 <span class="op">+</span><span class="st"> </span>api00, <span class="dt">design =</span> dstrat)</a>
 <a class="sourceLine" id="cb22-2" data-line-number="2">out<span class="op">$</span>cors</a></code></pre></div>
-<pre><code>##           api99     api00
-## api99 1.0000000 0.9759047
-## api00 0.9759047 1.0000000</code></pre>
+<pre><code>          api99     api00
+api99 1.0000000 0.9759047
+api00 0.9759047 1.0000000</code></pre>
 </div>
 
 
