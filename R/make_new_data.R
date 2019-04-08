@@ -197,7 +197,7 @@ get_data <- function(model, warn = TRUE) {
   raw_vars <- c(raw_vars, get_offset_name(model))
   # If survey, return now
   if ("svyglm" %in% class(model)) {
-    return(tibble::as_tibble(d[c(raw_vars, wname)]))
+    return(tibble::as_tibble(d[unique(c(raw_vars, wname))], rownames = NA))
   }
   if (any(raw_vars %nin% varnames)) {
     dat_name <- as.character(deparse(getCall(model)$data))
@@ -230,19 +230,21 @@ get_data <- function(model, warn = TRUE) {
       raw_vars <- c(raw_vars, wname)
     }
     # Check for variables from global environment
-    if (any(raw_vars %nin% d)) {
+    if (any(raw_vars %nin% names(d))) {
       global_vars <- raw_vars %not% names(d)
       # Attach each to data
-      d[global_vars] <- mget(global_vars, envir = env)
+      if (!is.null(env)) { # only if there is an environment
+        d[unique(global_vars)] <- mget(unique(global_vars), envir = env)
+      }
     }
-    tibble::as_tibble(d[raw_vars])
+    tibble::as_tibble(d[unique(raw_vars)], rownames = NA)
     
   } else {
     
     if ("(weights)" %in% names(d)) {
       names(d) %just% "(weights)" <- get_weights(model, d)$weights_name
     }
-    tibble::as_tibble(d)
+    tibble::as_tibble(d, rownames = NA)
     
   }
 }
@@ -363,9 +365,9 @@ center_value_survey <- function(d, design = NULL, name = NULL) {
 
 pred_values <- function(x, length = 100) {
   if (is.numeric(x)) {
-    seq(min(x), max(x), length.out = length)
+    seq(min(x, na.rm = TRUE), max(x, na.rm = TRUE), length.out = length)
   } else {
-    unique(x)
+    unique(x) %not% NA
   }
 }
 

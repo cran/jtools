@@ -141,7 +141,7 @@ pR2_merMod <- function(model) {
   ret <- list()
 
   # Get R2 for class == merMod
-  if (any(class(model) %in% c("lmerMod", "merModLmerTest"))) {
+  if (any(class(model) %in% c("lmerMod", "lmerModLmerTest"))) {
 
     # Get variance of fixed effects by multiplying coefficients by design matrix
     varF <- var(as.vector(lme4::fixef(model) %*% t(model@pp$X)))
@@ -337,7 +337,7 @@ get.random.formula <- function(model, rhs) {
   if (class(rhs) == "formula") {rhs <- Reduce(paste, deparse(rhs))}
 
   # Get random formula from model
-  random.formula <- if (any(class(model) %in% c("lmerMod", "merModLmerTest",
+  random.formula <- if (any(class(model) %in% c("lmerMod", "lmerModLmerTest",
                                                 "glmerMod", "glmmTMB"))) {
 
         paste("(", lme4::findbars(formula(model)), ")", collapse = " + ")
@@ -345,7 +345,7 @@ get.random.formula <- function(model, rhs) {
   }
 
   # Get random structure(s)
-  random.structure <- if (any(class(model) %in% c("lmerMod", "merModLmerTest",
+  random.structure <- if (any(class(model) %in% c("lmerMod", "lmerModLmerTest",
                                                   "glmerMod", "glmmTMB"))) {
 
       ran.ef.splt <- strsplit(random.formula, "\\+.")[[1]]
@@ -364,7 +364,7 @@ get.random.formula <- function(model, rhs) {
 
   # Get random slopes in the model list, otherwise return vector of
   # terms to drop
-  random.slopes <- if (any(class(model) %in% c("glmerMod", "merModLmerTest",
+  random.slopes <- if (any(class(model) %in% c("glmerMod", "lmerModLmerTest",
                                                "glmmTMB"))) {
 
     ran.ef <- ifelse(any(class(lme4::ranef(model)) != "list"),
@@ -392,7 +392,7 @@ get.random.formula <- function(model, rhs) {
   # random slopes
   if (length(random.slopes) != 0) {
 
-    if (any(class(model) %in% c("glmerMod", "merModLmerTest", "glmmTMB"))) {
+    if (any(class(model) %in% c("glmerMod", "lmerModLmerTest", "glmmTMB"))) {
 
         paste(
           sapply(random.structure, function(x)
@@ -449,33 +449,61 @@ get_se_kr <- function(model) {
 }
 
 get_all_sat <- function(model) {
-  new_mod <- lmerTest::as_lmerModLmerTest(model)
+  if ("lmerModLmerTest" %nin% class(model)) {
+    new_mod <- lmerTest::as_lmerModLmerTest(model)
+  } else {new_mod <- model}
   coefs <- summary(new_mod)$coefficients
   return(coefs)
 }
 
 
 #### merMod prediction #######################################################
-
+#' @title Alternative interface for `merMod` predictions
+#' @description This function generates predictions for `merMod` models, but
+#'  with the ability to get standard errors as well. 
+#' @inheritParams lme4:::predict.merMod
+#' @param se.fit Include standard errors with the predictions? Note that
+#'  these standard errors by default include only fixed effects variance.
+#'  See details for more info. Default is FALSE.
+#' @param use.re.var If `se.fit` is TRUE, include random effects variance in
+#'  standard errors? Default is FALSE.
+#' @param boot Use bootstrapping (via [lme4::bootMer()]) to estimate 
+#'  variance for `se.fit`? Default is FALSE
+#' @param sims If `boot` is TRUE, how many simulations should be run? Default 
+#'  is 100.
+#' @param prog.arg If `boot` and `se.fit` are TRUE, a character string - 
+#'  type of progress bar to display. Default is "none"; the function will look
+#'  for a relevant *ProgressBar function, so "txt" will work in general;
+#'  "tk" is available if the tcltk package is loaded; or "win" on Windows 
+#'  systems. Progress bars are disabled (with a message) for parallel operation.
+#' @param ... When `boot` and `se.fit` are TRUE, any additional arguments are
+#'  passed to `lme4::bootMer()`.
+#' @details The developers of \pkg{lme4} omit an `se.fit` argument for a 
+#'  reason, which is that it's not perfectly clear how best to estimate 
+#'  the variance for these models. This solution is a logical one, but perhaps
+#'  not perfect. Bayesian models are one way to do better. 
+#'  
+#'  The method used here is based on the one described here:
+#'  \url{http://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#predictions-andor-confidence-or-prediction-intervals-on-predictions}
+#' @export 
 #' @importFrom stats vcov model.frame terms delete.response na.omit
-predict_mer <- function(model, newdata = NULL, use_re_var = FALSE,
-                        se.fit = FALSE, dispersion = NULL, terms = NULL,
-                        allow.new.levels = FALSE,
-                        type = c("link", "response", "terms"),
-                        na.action = na.pass, re.form = NULL,
-                        boot = FALSE, sims = 100, prog_arg = "none", ...) {
+predict_merMod <- function(object, newdata = NULL, se.fit = FALSE,
+                           use.re.var = FALSE, allow.new.levels = FALSE, 
+                           type = c("link", "response", "terms"), 
+                           na.action = na.pass, re.form = NULL, 
+                           boot = FALSE, sims = 100, prog.arg = "none", ...) {
 
   type <- match.arg(type, c("link", "response", "terms"))
   if (is.null(newdata) & is.null(re.form)) {
     ## raw predict() call, just return fitted values
     ##   (inverse-link if appropriate)
-    if (lme4::isLMM(model) || lme4::isNLMM(model)) {
+    if (lme4::isLMM(object) || lme4::isNLMM(object)) {
       ## make sure we do *NOT* have NAs in fitted object
-      fit <- na.omit(fitted(model))
+      fit <- na.omit(fitted(object))
     } else { ## inverse-link
-      fit <-  switch(type, response = model@resp$mu, ## == fitted(object),
-                     link = model@resp$eta)
-      if (is.null(nm <- rownames(model.frame(model)))) {
+      fit <-  switch(type, response = object@resp$mu, ## == fitted(object),
+                     link = object@resp$eta)
+      if (is.null(nm <- rownames(model.frame(object)))) {
         nm <- seq_along(fit)
       }
       names(fit) <- nm
@@ -483,32 +511,32 @@ predict_mer <- function(model, newdata = NULL, use_re_var = FALSE,
     fit.na.action <- NULL
 
     # Need this for SEs
-    X <- lme4::getME(model, "X")
+    X <- lme4::getME(object, "X")
     X.col.dropped <- attr(X, "col.dropped")
 
     ## flow jumps to end for na.predict
   } else { ## newdata and/or re.form
 
-    fit.na.action <- attr(model@frame, "na.action")  ## original NA action
+    fit.na.action <- attr(object@frame, "na.action")  ## original NA action
 
-    nobs <- if (is.null(newdata)) nrow(model@frame) else nrow(newdata)
+    nobs <- if (is.null(newdata)) nrow(object@frame) else nrow(newdata)
     fit <- rep(0,nobs)
 
-    X <- lme4::getME(model, "X")
+    X <- lme4::getME(object, "X")
     X.col.dropped <- attr(X, "col.dropped")
     ## modified from predict.glm ...
     if (is.null(newdata)) {
       ## Use original model 'X' matrix and offset
       ## orig. offset: will be zero if there are no matches ...
-      offset <- model.offset(model.frame(model))
+      offset <- model.offset(model.frame(object))
       if (is.null(offset)) offset <- 0
     } else {  ## new data specified
       ## evaluate new fixed effect
       RHS <- formula(substitute(~R,
-                                list(R = RHSForm(formula(model,
+                                list(R = RHSForm(formula(object,
                                                          fixed.only = TRUE)))))
-      Terms <- terms(model, fixed.only = TRUE)
-      mf <- model.frame(model, fixed.only = TRUE)
+      Terms <- terms(object, fixed.only = TRUE)
+      mf <- model.frame(object, fixed.only = TRUE)
       isFac <- vapply(mf, is.factor, FUN.VALUE = TRUE)
       ## ignore response variable
       isFac[attr(Terms,"response")] <- FALSE
@@ -524,7 +552,7 @@ predict_mer <- function(model, newdata = NULL, use_re_var = FALSE,
       ## X <- X[,colnames(X0)]
 
       offset <- 0 # rep(0, nrow(X))
-      tt <- terms(model)
+      tt <- terms(object)
       if (!is.null(off.num <- attr(tt, "offset"))) {
         for (i in off.num)
           offset <- offset + eval(attr(tt,"variables")[[i + 1]], newdata)
@@ -535,7 +563,7 @@ predict_mer <- function(model, newdata = NULL, use_re_var = FALSE,
         X <- X[, -X.col.dropped, drop = FALSE]
       }
 
-      fit <- drop(X %*% lme4::fixef(model))
+      fit <- drop(X %*% lme4::fixef(object))
       fit <- fit + offset
 
     }
@@ -543,39 +571,39 @@ predict_mer <- function(model, newdata = NULL, use_re_var = FALSE,
   }  ## newdata/newparams/re.form
 
   if (se.fit == TRUE & boot == FALSE) {
-    .vcov <- as.matrix(vcov(model))
+    .vcov <- as.matrix(vcov(object))
     fit.ses <- sqrt(diag(X %*% .vcov %*% t(X)))
 
-    if (lme4::isGLMM(model)) {
+    if (lme4::isGLMM(object)) {
       switch(type, response = {
-        fit.ses <- fit.ses * abs(family(model)$mu.eta(fit))
-        fit <- model@resp$family$linkinv(fit)
+        fit.ses <- fit.ses * abs(family(object)$mu.eta(fit))
+        fit <- object@resp$family$linkinv(fit)
       }, link = , terms = )
     } else {
-      fit.ses <- fit.ses * abs(family(model)$mu.eta(fit))
+      fit.ses <- fit.ses * abs(family(object)$mu.eta(fit))
     }
 
-    re_vcov <- lme4::VarCorr(model)
+    re_vcov <- lme4::VarCorr(object)
     # Sum each random intercept variance
     re_variances <- sum(sapply(re_vcov, function(x) {x[1]}))
 
-    if (use_re_var == TRUE) {
+    if (use.re.var == TRUE) {
       fit.ses <- fit.ses + re_variances
     }
 
   } else if (se.fit == TRUE & boot == TRUE) {
 
-    bootfun <- function(model) {
-      drop( X  %*% lme4::fixef(model) )
+    bootfun <- function(object) {
+      drop( X  %*% lme4::fixef(object) )
     }
 
-    bo <- lme4::bootMer(model, FUN = bootfun, nsim = sims,
-                        .progress = prog_arg, ...)
+    bo <- lme4::bootMer(object, FUN = bootfun, nsim = sims,
+                        .progress = prog.arg, ...)
     fit <- bo$t
 
-    if (lme4::isGLMM(model)) {
+    if (lme4::isGLMM(object)) {
       switch(type, response = {
-        fit <- model@resp$family$linkinv(fit)
+        fit <- object@resp$family$linkinv(fit)
       }, link = , terms = )
     }
 
@@ -583,17 +611,17 @@ predict_mer <- function(model, newdata = NULL, use_re_var = FALSE,
 
   if (!noReForm(re.form)) {
     if (is.null(re.form))
-      re.form <- reOnly(formula(model)) # RE formula only
-    rfd <- if (is.null(newdata)) {model@frame} else {newdata}
-    newRE <- mkNewReTrms(model, rfd, re.form, na.action = na.action,
+      re.form <- reOnly(formula(object)) # RE formula only
+    rfd <- if (is.null(newdata)) {object@frame} else {newdata}
+    newRE <- mkNewReTrms(object, rfd, re.form, na.action = na.action,
                          allow.new.levels = allow.new.levels)
     REvals <- base::drop(methods::as(newRE$b %*% newRE$Zt, "matrix"))
     fit <- fit + REvals
   }
 
-  if (se.fit == FALSE & lme4::isGLMM(model)) {
+  if (se.fit == FALSE & lme4::isGLMM(object)) {
     switch(type, response = {
-      fit <- model@resp$family$linkinv(fit)
+      fit <- object@resp$family$linkinv(fit)
     }, link = , terms = )
   }
 
@@ -606,6 +634,11 @@ predict_mer <- function(model, newdata = NULL, use_re_var = FALSE,
   }
 
 
+}
+
+# Use same old internal interface
+predict_mer <- function(object, use_re_var = FALSE, prog_arg = "none", ...) {
+  predict_merMod(object, use.re.var = use_re_var, prog.arg = prog_arg, ...)
 }
 
 # # adapted from https://stackoverflow.com/a/49403210/5050156

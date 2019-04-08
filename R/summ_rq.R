@@ -1,7 +1,7 @@
 #' @title Quantile regression summaries with options
 #'
-#' @description \code{summ} prints output for a regression model in a fashion
-#'  similar to \code{summary}, but formatted differently with more options.
+#' @description \code{summ()} prints output for a regression model in a fashion
+#'  similar to \code{summary()}, but formatted differently with more options.
 #'
 #' @param model A `rq` model. At this time, `rqs` models (multiple `tau`
 #'  parameters) are not supported.
@@ -28,6 +28,8 @@
 #'  could calculate R-squared for these models, it goes against the underlying
 #'  theoretical rationale for them. Koenker himself is not a big fan of R1
 #'  either, but it's something. See Koenker \& Machado (1999) for more info.
+#'
+#' @family summ
 #'
 #' @references
 #'
@@ -56,7 +58,6 @@ summ.rq <- function(model, scale = FALSE,
   boot.sims = 1000, boot.method = "xy",
   vifs = getOption("summ-vifs", FALSE),
   digits = getOption("jtools-digits", 2), pvals = getOption("summ-pvals", TRUE),
-  stars = getOption("summ-stars", FALSE),
   n.sd = 1, center = FALSE, transform.response = FALSE, data = NULL,
   model.info = getOption("summ-model.info", TRUE),
   model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL,  ...) {
@@ -101,10 +102,10 @@ summ.rq <- function(model, scale = FALSE,
   if (scale == TRUE) {
     model <- scale_mod(model, n.sd = n.sd,
                        scale.response = transform.response,
-                       data = data)
+                       data = data, ... )
   } else if (center == TRUE && scale == FALSE) {
     model <- center_mod(model, center.response = transform.response,
-                        data = data)
+                        data = data, ...)
   }
 
   # Using info from summary.rq
@@ -214,7 +215,7 @@ summ.rq <- function(model, scale = FALSE,
   j <- structure(j, r1 = r1, dv = names(model$model[1]), lmClass = class(model),
                  missing = missing, use_cluster = FALSE,
                  confint = confint, ci.width = ci.width, pvals = pvals,
-                 test.stat = "t val.", stars = stars,
+                 test.stat = "t val.", 
                  standardize.response = transform.response,
                  scale.response = transform.response,
                  transform.response = transform.response,
@@ -239,9 +240,7 @@ print.summ.rq <- function(x, ...) {
   # saving attributes as x (this was to make a refactoring easier)
   x <- attributes(j)
 
-  # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      stars = x$stars)
+  ctable <- j$coeftable
 
   if (x$model.info == TRUE) {
 
@@ -275,10 +274,8 @@ print.summ.rq <- function(x, ...) {
                     "rank" = "Koenker rank test")
 
   print_se_info(x$robust, x$use_cluster, manual = se_name)
-
-  cat("\n")
-  print(md_table(ctable, format = getOption("summ.table.format", "markdown"),
-        align = "r"))
+  print(md_table(ctable, format = getOption("summ.table.format", "multiline"),
+                 sig.digits = FALSE, digits = x$digits))
 
   # Notifying user if variables altered from original fit
   ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
@@ -310,9 +307,8 @@ knit_print.summ.rq <- function(x, options = NULL, ...) {
   o_opt <- getOption("kableExtra.auto_format", NULL)
   options(kableExtra.auto_format = FALSE)
 
-  # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      add_col = TRUE, stars = x$stars)
+  # Helper function to deal with table rounding
+  ctable <- round_df_char(df = j$coeftable, digits = x$digits)
 
   # context <- huxtable::guess_knitr_output_format()
   # if (context == "") {context <- "screen"}
@@ -439,4 +435,10 @@ nobs.summ.rq <- function(object, ...) {
 
   return(length(fitted((object$model))))
 
+}
+
+#' @export
+#' @importFrom stats gaussian
+family.rq <- function(object, ...) {
+  gaussian(link = "identity")
 }

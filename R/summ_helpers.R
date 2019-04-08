@@ -1,85 +1,5 @@
 #### summ helpers ############################################################
 
-## Automates the adding of the significance stars to the output
-## Also rounds the digits and spits out a table from a matrix
-## Since it's doing double duty, also can skip the p vals if requested
-
-add_stars <- function(table, digits, p_vals, add_col = FALSE, stars = TRUE) {
-  
-  if (p_vals == TRUE) { # Only do this if showing p values
-    
-    # Grab the unrounded p values
-    pvals <- table[,"p"]
-    
-    # Create a NA-filled vector to speed up the loop
-    sigstars <- rep(NA, times = nrow(table))
-    
-    # Add the stars
-    for (y in seq_along(pvals)) {
-      
-      if (is.na(pvals[y]) || pvals[y] > 0.1) {
-        sigstars[y] <- ""
-      } else if (pvals[y] <= 0.1 & pvals[y] > 0.05) {
-        sigstars[y] <- "."
-      } else if (pvals[y] > 0.01 & pvals[y] <= 0.05) {
-        sigstars[y] <- "*"
-      } else if (pvals[y] > 0.001 & pvals[y] <= 0.01) {
-        sigstars[y] <- "**"
-      } else if (pvals[y] <= 0.001) {
-        sigstars[y] <- "***"
-      }
-      
-    }
-    
-  }
-  
-  # Round the values
-  table <- round_df_char(table, digits)
-  
-  # Can't do this in the first conditional because of the need to round
-  if (p_vals == TRUE & stars == TRUE) {
-    # Get the colnames so I can fix them after cbinding
-    tnames <- colnames(table)
-    if (add_col == FALSE) {
-      # Pad the stars and colnames for alignment
-      max_len <- max(nchar(sigstars))
-      for (i in seq_len(length(sigstars))) {
-        # How many characters is this one
-        len <- nchar(sigstars[i])
-        # Generate spaces needed to pad it
-        spaces <- paste0(rep("\u00A0", times = max_len - len), collapse = "")
-        # Append spaces to make length equal to max
-        sigstars[i] <- if (max_len > 0) {
-          paste0("\u00A0", sigstars[i], spaces)
-        } else {
-          paste0(sigstars[i], spaces)
-        }
-      }
-      # Which colname is p?
-      p_i <- which(colnames(table) == "p")
-      # Rename the column to align the same way
-      spaces <- paste0(rep("\u00A0", ifelse(max_len > 0, yes = max_len + 1,
-                                            no = max_len)),
-                       collapse = "")
-      tnames[p_i] <- paste0("p", spaces)
-      # Change the column names
-      colnames(table) <- tnames
-      # Now append the stars to the p values
-      table[,p_i] <- paste0(table[,p_i], sigstars)
-      
-    } else { # This is the legacy behavior and still used for knitted output
-      # put in the stars
-      table <- cbind(table, sigstars)
-      # Makes the name for the stars column empty
-      colnames(table) <- c(tnames, "")
-    }
-    
-  }
-  
-  return(table)
-  
-}
-
 ## Creates clean data frames for printing. Aligns decimal points,
 ## padding extra space with " " (or another value), and rounds values.
 ## Outputs a data.frame of character vectors containing the corrected
@@ -172,6 +92,9 @@ round_df_char <- function(df, digits, pad = " ", na_vals = NA) {
 #' @param cluster If you want clustered standard errors, either a string naming
 #'  the column in `data` that represents the clusters or a vector of clusters
 #'  that is the same length as the number of rows in `data`.
+#' @param vcov You may provide the variance-covariance matrix yourself and this
+#'  function will just calculate standard errors, etc. based on that. Default
+#'  is NULL.
 #' @return 
 #' A list with the following:
 #'
@@ -188,7 +111,7 @@ round_df_char <- function(df, digits, pad = " ", na_vals = NA) {
 #' @export
 #' @rdname get_robust_se
 get_robust_se <- function(model, type = "HC3", cluster = NULL, 
-                          data = model.frame(model)) {
+                          data = model.frame(model), vcov = NULL) {
   
   if (!requireNamespace("sandwich", quietly = TRUE)) {
     stop_wrap("When using robust SEs you need to have the \'sandwich\' 
@@ -233,19 +156,20 @@ get_robust_se <- function(model, type = "HC3", cluster = NULL,
     
   }
   
-  if (type %in% c("HC4", "HC4m", "HC5") & is.null(cluster)) {
+  if (is.null(vcov) & type %in% c("HC4", "HC4m", "HC5") & is.null(cluster)) {
     # vcovCL only goes up to HC3
     coefs <- sandwich::vcovHC(model, type = type)
     
-  } else if (type %in% c("HC4", "HC4m", "HC5") & !is.null(cluster)) {
+  } else if (is.null(vcov) & type %in% c("HC4", "HC4m", "HC5") &
+             !is.null(cluster)) {
     
     stop_wrap("If using cluster-robust SEs, robust.type must be HC3 or lower.")
     
-  } else {
+  } else if (is.null(vcov)) {
     
     coefs <- sandwich::vcovCL(model, cluster = cluster, type = type)
     
-  }
+  } else {coefs <- vcov}
   
   vcov <- coefs
   coefs <- coeftest(model, coefs)
@@ -265,9 +189,10 @@ print.robust_info <- function(x, ...) {
   print(md_table(x$coefs))
 }
 
-do_robust <- function(model, robust, cluster, data) {
+do_robust <- function(model, robust, cluster, data, vcov = NULL) {
   out <-
-    get_robust_se(model = model, type = robust, cluster = cluster, data = data)
+    get_robust_se(model = model, type = robust, cluster = cluster, data = data,
+                  vcov = vcov)
   names(out)[names(out) == "type"] <- "robust"
   return(out)
 }
@@ -412,12 +337,16 @@ dep_checks <- function(dots) {
   if ("odds.ratio" %in% names(dots)) {
     warn_wrap("The odds.ratio argument is deprecated. Use 'exp' instead.",
               call. = FALSE)
-    robust <- dots$robust.type
+    exp <- dots$odds.ratio
   }
 
   if ("model.check" %in% names(dots)) {
     warn_wrap("The model.check argument is deprecated and has been removed.",
               call. = FALSE)
+  }
+  
+  if ("stars" %in% names(dots)) {
+    warn_wrap("The 'stars' argument is deprecated and has been removed.")
   }
   
   list(scale = scale, transform.response = transform.response, robust = robust,
@@ -538,15 +467,15 @@ print_mod_fit <- function(stats) {
 
 ## Print line about standard errors
 
-print_se_info <- function(robust, use_cluster, manual = NULL, ...) {
+print_se_info <- function(robust, use_cluster, manual = NULL, vcov = NULL, ...) {
   
-  if (identical(FALSE, robust)) {
+  if (identical(FALSE, robust) & is.null(vcov)) {
     
     cat(italic("Standard errors:",  ifelse(is.null(manual),
                                            no = manual, yes = "MLE")),
         "\n", sep = "")
     
-  } else {
+  } else if (is.null(vcov)) {
     
     if (robust == TRUE) {robust <- "HC3"}
     
@@ -562,19 +491,21 @@ print_se_info <- function(robust, use_cluster, manual = NULL, ...) {
       
     }
     
+  } else {
+    "User-specified"
   }
   
 }
 
 ## Save SE info as string
 
-get_se_info <- function(robust, use_cluster, manual = NULL, ...) {
+get_se_info <- function(robust, use_cluster, manual = NULL, vcov = NULL, ...) {
   
-  if (identical(FALSE, robust)) {
+  if (identical(FALSE, robust) & is.null(vcov)) {
     
     ifelse(is.null(manual), no = manual, yes = "MLE")
     
-  } else {
+  } else if (is.null(vcov)) {
     
     if (robust == TRUE) {robust <- "HC3"}
     
@@ -588,6 +519,8 @@ get_se_info <- function(robust, use_cluster, manual = NULL, ...) {
       
     }
     
+  } else {
+    "User-specified"
   }
   
 }

@@ -9,8 +9,7 @@
   confint = getOption("summ-confint", FALSE),
   ci.width = getOption("summ-ci.width", 0.95),
   digits = getOption("jtools-digits", default = 2),
-  pvals = getOption("summ-pvals", TRUE),
-  stars = getOption("summ-stars", FALSE), n.sd = 1, center = FALSE,
+  pvals = getOption("summ-pvals", TRUE), n.sd = 1, center = FALSE,
   transform.response = FALSE, exp = FALSE,
   vifs = getOption("summ-vifs", FALSE),
   model.info = getOption("summ-model.info", TRUE),
@@ -36,10 +35,8 @@ digits for all jtools functions with
 \code{options("jtools-digits" = digits)} where digits is the desired
 number.}
 
-\item{pvals}{Show p values and significance stars? If \code{FALSE}, these
+\item{pvals}{Show p values? If \code{FALSE}, these
 are not printed. Default is \code{TRUE}.}
-
-\item{stars}{Show significance stars with p values? Default is FALSE.}
 
 \item{n.sd}{If \code{scale = TRUE}, how many standard deviations should
 predictors be divided by? Default is 1, though some suggest 2.}
@@ -67,8 +64,8 @@ name of DV, and number of predictors.}
 you can add/remove/reorder requested columns in the output. Not fully
 supported, for now.}
 
-\item{...}{This just captures extra arguments that may only work for other
-types of models.}
+\item{...}{Among other things, arguments are passed to \code{\link[=scale_mod]{scale_mod()}} or
+\code{\link[=center_mod]{center_mod()}} when \code{center} or \code{scale} is \code{TRUE}.}
 }
 \value{
 If saved, users can access most of the items that are returned in the
@@ -81,8 +78,8 @@ most useful in cases in which \code{scale = TRUE}.}
 Much other information can be accessed as attributes.
 }
 \description{
-\code{summ} prints output for a regression model in a fashion similar to
-\code{summary}, but formatted differently with more options.
+\code{summ()} prints output for a regression model in a fashion similar to
+\code{summary()}, but formatted differently with more options.
 }
 \details{
 By default, this function will print the following items to the
@@ -96,10 +93,11 @@ p values.
 }
 
 The \code{scale} and \code{center} options are performed via refitting
-the model with \code{\link{scale_lm}} and \code{\link{center_lm}},
-respectively. Each of those in turn uses \code{\link{gscale}} for the
+the model with \code{\link[=scale_mod]{scale_mod()}} and \code{\link[=center_mod]{center_mod()}},
+respectively. Each of those in turn uses \code{\link[=gscale]{gscale()}} for the
 mean-centering and scaling. These functions can handle \code{svyglm} objects
-correctly by calling \code{svymean} and \code{svyvar} to compute means and
+correctly by calling \code{svymean()} and \code{svyvar()} to compute means
+and
 standard deviations. Weights are not altered. The fact that the model is
 refit means the runtime will be similar to the original time it took to fit
 the model.
@@ -116,12 +114,16 @@ if (requireNamespace("survey")) {
 }
 }
 \seealso{
-\code{\link{scale_lm}} can simply perform the standardization if
+\code{\link[=scale_mod]{scale_mod()}} can simply perform the standardization if
 preferred.
 
-\code{\link{gscale}} does the heavy lifting for mean-centering and scaling
+\code{\link[=gscale]{gscale()}} does the heavy lifting for mean-centering and scaling
 behind the scenes.
+
+Other summ: \code{\link{summ.glm}}, \code{\link{summ.lm}},
+  \code{\link{summ.merMod}}, \code{\link{summ.rq}}
 }
 \author{
 Jacob Long <\email{long.1377@osu.edu}>
 }
+\concept{summ}

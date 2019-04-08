@@ -10,8 +10,7 @@
   "iid", "ker", "boot"), boot.sims = 1000, boot.method = "xy",
   vifs = getOption("summ-vifs", FALSE),
   digits = getOption("jtools-digits", 2),
-  pvals = getOption("summ-pvals", TRUE),
-  stars = getOption("summ-stars", FALSE), n.sd = 1, center = FALSE,
+  pvals = getOption("summ-pvals", TRUE), n.sd = 1, center = FALSE,
   transform.response = FALSE, data = NULL,
   model.info = getOption("summ-model.info", TRUE),
   model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL,
@@ -49,10 +48,8 @@ digits for all jtools functions with
 \code{options("jtools-digits" = digits)} where digits is the desired
 number.}
 
-\item{pvals}{Show p values and significance stars? If \code{FALSE}, these
+\item{pvals}{Show p values? If \code{FALSE}, these
 are not printed. Default is \code{TRUE}.}
-
-\item{stars}{Show significance stars with p values? Default is FALSE.}
 
 \item{n.sd}{If \code{scale = TRUE}, how many standard deviations should
 predictors be divided by? Default is 1, though some suggest 2.}
@@ -78,12 +75,12 @@ name of DV, and number of predictors.}
 you can add/remove/reorder requested columns in the output. Not fully
 supported, for now.}
 
-\item{...}{This just captures extra arguments that may only work for other
-types of models.}
+\item{...}{Among other things, arguments are passed to \code{\link[=scale_mod]{scale_mod()}} or
+\code{\link[=center_mod]{center_mod()}} when \code{center} or \code{scale} is \code{TRUE}.}
 }
 \description{
-\code{summ} prints output for a regression model in a fashion
-similar to \code{summary}, but formatted differently with more options.
+\code{summ()} prints output for a regression model in a fashion
+similar to \code{summary()}, but formatted differently with more options.
 }
 \details{
 This method implements most of the things I think most users would
@@ -115,3 +112,8 @@ inference processes for quantile regression.
 \emph{Journal of the American Statistical Association}, \emph{94}, 1296–1310.
 https://doi.org/10.1080/01621459.1999.10473882
 }
+\seealso{
+Other summ: \code{\link{summ.glm}}, \code{\link{summ.lm}},
+  \code{\link{summ.merMod}}, \code{\link{summ.svyglm}}
+}
+\concept{summ}

@@ -36,8 +36,8 @@ j_summ <- summ
 
 #' Linear regression summaries with options
 #'
-#' \code{summ} prints output for a regression model in a fashion similar to
-#' \code{summary}, but formatted differently with more options.
+#' \code{summ()} prints output for a regression model in a fashion similar to
+#' \code{summary()}, but formatted differently with more options.
 #'
 #' @param model A \code{lm} object.
 #'
@@ -75,10 +75,8 @@ j_summ <- summ
 #'   \code{options("jtools-digits" = digits)} where digits is the desired
 #'   number.
 #'
-#' @param pvals Show p values and significance stars? If \code{FALSE}, these
+#' @param pvals Show p values? If \code{FALSE}, these
 #'  are not printed. Default is \code{TRUE}.
-#'  
-#' @param stars Show significance stars with p values? Default is FALSE. 
 #'
 #' @param n.sd If \code{scale = TRUE}, how many standard deviations should
 #'  predictors be divided by? Default is 1, though some suggest 2.
@@ -108,9 +106,13 @@ j_summ <- summ
 #' @param which.cols Developmental feature. By providing columns by name,
 #'   you can add/remove/reorder requested columns in the output. Not fully
 #'   supported, for now.
+#'   
+#' @param vcov You may provide your own variance-covariance matrix for the
+#'  regression coefficients if you want to calculate standard errors in 
+#'  some way not accommodated by the `robust` and `cluster` options.
 #'
-#' @param ... This just captures extra arguments that may only work for other
-#'  types of models.
+#' @param ... Among other things, arguments are passed to [scale_mod()] or 
+#'   [center_mod()] when `center` or `scale` is `TRUE`.
 #'
 #' @details By default, this function will print the following items to the
 #'  console:
@@ -123,20 +125,20 @@ j_summ <- summ
 #' }
 #'
 #'  There are several options available for \code{robust}. The heavy
-#'  lifting is done by \code{\link[sandwich]{vcovHC}}, where those are better
+#'  lifting is done by [sandwich::vcovHC()], where those are better
 #'  described.
 #'  Put simply, you may choose from \code{"HC0"} to \code{"HC5"}. Based on the
 #'  recommendation of the developers of \pkg{sandwich}, the default is set to
 #'  \code{"HC3"}. Stata's default is \code{"HC1"}, so that choice may be better
 #'  if the goal is to replicate Stata's output. Any option that is understood
-#'  by \code{vcovHC} will be accepted. Cluster-robust standard errors are
+#'  by \code{vcovHC()} will be accepted. Cluster-robust standard errors are
 #'  computed if \code{cluster} is set to the name of the input data's cluster
 #'  variable or is a vector of clusters.
 #'
 #'  The \code{scale} and \code{center} options are performed via
 #'  refitting
-#'  the model with \code{\link{scale_mod}} and \code{\link{center_mod}},
-#'  respectively. Each of those in turn uses \code{\link{gscale}} for the
+#'  the model with [scale_mod()] and [center_mod()],
+#'  respectively. Each of those in turn uses [gscale()] for the
 #'  mean-centering and scaling.
 #'
 #'  If using \code{part.corr = TRUE}, then you will get these two common
@@ -161,14 +163,16 @@ j_summ <- summ
 #'
 #'  Much other information can be accessed as attributes.
 #'
-#' @seealso \code{\link{scale_mod}} can simply perform the standardization if
+#' @seealso [scale_mod()] can simply perform the standardization if
 #'  preferred.
 #'
-#'  \code{\link{gscale}} does the heavy lifting for mean-centering and scaling
+#'  [gscale()] does the heavy lifting for mean-centering and scaling
 #'  behind the scenes.
 #'
 #' @author Jacob Long <\email{long.1377@@osu.edu}>
 #'
+#' @family summ
+#' 
 #' @examples
 #' # Create lm object
 #' fit <- lm(Income ~ Frost + Illiteracy + Murder,
@@ -203,10 +207,10 @@ summ.lm <- function(
   robust = getOption("summ-robust", FALSE), cluster = NULL,
   vifs = getOption("summ-vifs", FALSE),
   digits = getOption("jtools-digits", 2), pvals = getOption("summ-pvals", TRUE),
-  stars = getOption("summ-stars", FALSE),
   n.sd = 1, center = FALSE, transform.response = FALSE, data = NULL,
   part.corr = FALSE, model.info = getOption("summ-model.info", TRUE),
-  model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL,  ...) {
+  model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL, 
+  vcov = NULL, ...) {
 
   j <- list()
 
@@ -237,14 +241,14 @@ summ.lm <- function(
 
     model <- scale_mod(model, n.sd = n.sd,
                       scale.response = transform.response,
-                      data = data)
+                      data = data, ...)
     # Using information from summary()
     sum <- summary(model)
 
   } else if (center == TRUE && scale == FALSE) {
 
     model <- center_mod(model, center.response = transform.response,
-                        data = data)
+                        data = data, ...)
     # Using information from summary()
     sum <- summary(model)
 
@@ -298,7 +302,7 @@ summ.lm <- function(
   }
 
   # Standard errors and t-statistics
-  if (identical(FALSE, robust)) {
+  if (identical(FALSE, robust) & is.null(vcov)) {
 
     ses <- coef(sum)[,2]
     ts <- coef(sum)[,3]
@@ -308,7 +312,7 @@ summ.lm <- function(
   } else {
 
     # Pass to robust helper function
-    rob_info <- do_robust(model, robust, cluster, data)
+    rob_info <- do_robust(model, robust, cluster, data, vcov)
 
     ses <- rob_info$ses
     ts <- rob_info$ts
@@ -366,11 +370,11 @@ summ.lm <- function(
                  npreds = model$rank - df.int, lmClass = class(model),
                  missing = missing, use_cluster = use_cluster,
                  confint = confint, ci.width = ci.width, pvals = pvals,
-                 test.stat = "t val.", stars = stars,
+                 test.stat = "t val.",
                  standardize.response = transform.response,
                  scale.response = transform.response,
                  transform.response = transform.response,
-                 exp = FALSE)
+                 exp = FALSE, vcov = vcov)
 
   j$coeftable <- mat
   j$model <- model
@@ -391,9 +395,7 @@ print.summ.lm <- function(x, ...) {
   # saving attributes as x (this was to make a refactoring easier)
   x <- attributes(j)
 
-  # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      stars = x$stars)
+  ctable <- j$coeftable
 
   if (x$model.info == TRUE) {
     type <- paste("OLS linear regression")
@@ -410,11 +412,9 @@ print.summ.lm <- function(x, ...) {
     print_mod_fit(stats)
   }
 
-  print_se_info(x$robust, x$use_cluster, manual = "OLS")
-
-  cat("\n")
-  print(md_table(ctable, format = getOption("summ.table.format", "markdown"),
-        align = "r"))
+  print_se_info(x$robust, x$use_cluster, manual = "OLS", vcov = x$vcov)
+  print(md_table(ctable, format = getOption("summ.table.format", "multiline"),
+                 sig.digits = FALSE, digits = x$digits))
 
   # Notifying user if variables altered from original fit
   ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
@@ -448,9 +448,8 @@ knit_print.summ.lm <- function(x, options = NULL, ...) {
   # saving attributes as x (this was to make a refactoring easier)
   x <- attributes(j)
 
-  # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      add_col = TRUE, stars = x$stars)
+  # Helper function to deal with table rounding 
+  ctable <- round_df_char(df = j$coeftable, digits = x$digits)
 
   format <- ifelse(knitr::is_latex_output(), yes = "latex", no = "html")
   o_opt <- getOption("kableExtra.auto_format", NULL)
@@ -487,7 +486,7 @@ knit_print.summ.lm <- function(x, options = NULL, ...) {
     stats %<>% to_kable(format = format, row.names = FALSE, col.names = NULL)
   } else {stats <- NULL}
 
-  se_info <- get_se_info(x$robust, x$use_cluster, manual = "OLS")
+  se_info <- get_se_info(x$robust, x$use_cluster, manual = "OLS", vcov = x$vcov)
   # Notifying user if variables altered from original fit
   ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
   ss <- if (!is.null(ss)) {paste(";", ss)} else {ss}
@@ -510,16 +509,14 @@ knit_print.summ.lm <- function(x, options = NULL, ...) {
 
 #' Generalized linear regression summaries with options
 #'
-#' \code{summ} prints output for a regression model in a fashion similar to
-#' \code{summary}, but formatted differently with more options.
+#' \code{summ()} prints output for a regression model in a fashion similar to
+#' \code{summary()}, but formatted differently with more options.
 #'
 #' @param model A `glm` object.
 #' @param exp If \code{TRUE}, reports exponentiated coefficients with
 #'  confidence intervals for exponential models like logit and Poisson models.
 #'  This quantity is known as an odds ratio for binary outcomes and incidence
 #'  rate ratio for count models.
-#' @param ... This just captures extra arguments that may only work for other
-#'  types of models.
 #'
 #' @inheritParams summ.lm
 #'
@@ -534,20 +531,21 @@ knit_print.summ.lm <- function(x, options = NULL, ...) {
 #' }
 #'
 #'  There are several options available for \code{robust}. The heavy
-#'  lifting is done by \code{\link[sandwich]{vcovHC}}, where those are better
+#'  lifting is done by [sandwich::vcovHC()], where those are better
 #'  described.
 #'  Put simply, you may choose from \code{"HC0"} to \code{"HC5"}. Based on the
 #'  recommendation of the developers of \pkg{sandwich}, the default is set to
 #'  \code{"HC3"}. Stata's default is \code{"HC1"}, so that choice may be better
 #'  if the goal is to replicate Stata's output. Any option that is understood by
-#'  \code{vcovHC} will be accepted. Cluster-robust standard errors are computed
+#'  \code{vcovHC()} will be accepted. Cluster-robust standard errors are
+#'  computed
 #'  if \code{cluster} is set to the name of the input data's cluster variable
 #'  or is a vector of clusters.
 #'
 #'  The \code{scale} and \code{center} options are performed via
 #'  refitting
-#'  the model with \code{\link{scale_mod}} and \code{\link{center_mod}},
-#'  respectively. Each of those in turn uses \code{\link{gscale}} for the
+#'  the model with [scale_mod()] and [center_mod()],
+#'  respectively. Each of those in turn uses [gscale()] for the
 #'  mean-centering and scaling.
 #'
 #' @return If saved, users can access most of the items that are returned in
@@ -559,14 +557,16 @@ knit_print.summ.lm <- function(x, options = NULL, ...) {
 #'
 #'  Much other information can be accessed as attributes.
 #'
-#' @seealso \code{\link{scale_lm}} can simply perform the standardization if
+#' @seealso [scale_mod()] can simply perform the standardization if
 #'  preferred.
 #'
-#'  \code{\link{gscale}} does the heavy lifting for mean-centering and scaling
+#'  [gscale()] does the heavy lifting for mean-centering and scaling
 #'  behind the scenes.
 #'
 #' @author Jacob Long <\email{long.1377@@osu.edu}>
-#'
+#' 
+#' @family summ
+#'  
 #' @examples
 #'  ## Dobson (1990) Page 93: Randomized Controlled Trial :
 #'  counts <- c(18,17,15,20,10,20,25,13,12)
@@ -605,11 +605,11 @@ summ.glm <- function(
   robust = getOption("summ-robust", FALSE), cluster = NULL,
   vifs = getOption("summ-vifs", FALSE),
   digits = getOption("jtools-digits", default = 2),
-  exp = FALSE, pvals = getOption("summ-pvals", TRUE),
-  stars = getOption("summ-stars", FALSE), n.sd = 1,
+  exp = FALSE, pvals = getOption("summ-pvals", TRUE), n.sd = 1,
   center = FALSE, transform.response = FALSE, data = NULL,
   model.info = getOption("summ-model.info", TRUE),
-  model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL, ...) {
+  model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL,
+  vcov = NULL, ...) {
 
   j <- list()
 
@@ -639,14 +639,14 @@ summ.glm <- function(
   if (scale == TRUE) {
 
     model <- scale_mod(model, n.sd = n.sd, scale.response = transform.response,
-                       data = data)
+                       data = data, ...)
     # Using information from summary()
     sum <- summary(model)
 
   } else if (center == TRUE && scale == FALSE) {
 
     model <- center_mod(model, center.response = transform.response,
-                        data = data)
+                        data = data, ...)
     # Using information from summary()
     sum <- summary(model)
 
@@ -705,7 +705,7 @@ summ.glm <- function(
   }
 
   # Standard errors and t-statistics
-  if (identical(FALSE, robust)) {
+  if (identical(FALSE, robust) & is.null(vcov)) {
 
     ses <- coef(sum)[,2]
     ts <- coef(sum)[,3]
@@ -715,7 +715,7 @@ summ.glm <- function(
   } else {
 
     # Pass to robust helper function
-    rob_info <- do_robust(model, robust, cluster, data)
+    rob_info <- do_robust(model, robust, cluster, data, vcov)
 
     ses <- rob_info$ses
     ts <- rob_info$ts
@@ -795,11 +795,11 @@ summ.glm <- function(
                  missing = missing, pvals = pvals, robust = robust,
                  robust.type = robust, use_cluster = use_cluster,
                  confint = confint, ci.width = ci.width, pvals = pvals,
-                 test.stat = tcol, stars = stars, 
+                 test.stat = tcol,
                  standardize.response = transform.response,
                  exp = exp,
                  scale.response = transform.response,
-                 lmFamily = model$family, chisq = chisq)
+                 lmFamily = model$family, chisq = chisq, vcov = vcov)
 
   j$coeftable <- mat
   j$model <- model
@@ -819,9 +819,7 @@ print.summ.glm <- function(x, ...) {
   # saving attributes as x (this was to make a refactoring easier)
   x <- attributes(j)
 
-    # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      stars = x$stars)
+  ctable <- j$coeftable
 
   if (x$model.info == TRUE) {
     if (x$lmFamily[1] == "gaussian" && x$lmFamily[2] == "identity") {
@@ -850,11 +848,9 @@ print.summ.glm <- function(x, ...) {
     print_mod_fit(stats)
   }
 
-  print_se_info(x$robust, x$use_cluster)
-
-  cat("\n")
-  print(md_table(ctable, format = getOption("summ.table.format", "markdown"),
-        align = "r"))
+  print_se_info(x$robust, x$use_cluster, vcov = x$vcov)
+  print(md_table(ctable, format = getOption("summ.table.format", "multiline"),
+                 sig.digits = FALSE, digits = x$digits))
 
   if (x$dispersion != 1) {
     cat("\n")
@@ -878,7 +874,8 @@ print.summ.glm <- function(x, ...) {
 
 knit_print.summ.glm <- function(x, options = NULL, ...) {
 
-  if (!nzchar(system.file(package = "kableExtra")) |       getOption("summ-normal-print", FALSE)) {
+  if (!nzchar(system.file(package = "kableExtra")) | 
+      getOption("summ-normal-print", FALSE)) {
     return(knitr::normal_print(x))
   }
 
@@ -887,9 +884,8 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
   # saving attributes as x (this was to make a refactoring easier)
   x <- attributes(j)
 
-  # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      add_col = TRUE, stars = x$stars)
+  # Helper function to deal with table rounding 
+  ctable <- round_df_char(df = j$coeftable, digits = x$digits)
 
   format <- ifelse(knitr::is_latex_output(), yes = "latex", no = "html")
   o_opt <- getOption("kableExtra.auto_format", NULL)
@@ -956,7 +952,7 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
   
   } else {stats <- NULL}
 
-  se_info <- get_se_info(x$robust, x$use_cluster)
+  se_info <- get_se_info(x$robust, x$use_cluster, vcov = x$vcov)
   # Notifying user if variables altered from original fit
   ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
   ss <- if (!is.null(ss)) {paste(";", ss)} else {ss}
@@ -980,8 +976,8 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
 
 #' Complex survey regression summaries with options
 #'
-#' \code{summ} prints output for a regression model in a fashion similar to
-#' \code{summary}, but formatted differently with more options.
+#' \code{summ()} prints output for a regression model in a fashion similar to
+#' \code{summary()}, but formatted differently with more options.
 #'
 #' @param model A `svyglm` object.
 #' @param exp If \code{TRUE}, reports exponentiated coefficients with
@@ -1002,10 +998,11 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
 #' }
 #'
 #'  The \code{scale} and \code{center} options are performed via refitting
-#'  the model with \code{\link{scale_lm}} and \code{\link{center_lm}},
-#'  respectively. Each of those in turn uses \code{\link{gscale}} for the
+#'  the model with [scale_mod()] and [center_mod()],
+#'  respectively. Each of those in turn uses [gscale()] for the
 #'  mean-centering and scaling. These functions can handle \code{svyglm} objects
-#'  correctly by calling \code{svymean} and \code{svyvar} to compute means and
+#'  correctly by calling \code{svymean()} and \code{svyvar()} to compute means
+#'  and
 #'  standard deviations. Weights are not altered. The fact that the model is
 #'  refit means the runtime will be similar to the original time it took to fit
 #'  the model.
@@ -1019,13 +1016,15 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
 #'
 #'  Much other information can be accessed as attributes.
 #'
-#' @seealso \code{\link{scale_lm}} can simply perform the standardization if
+#' @seealso [scale_mod()] can simply perform the standardization if
 #'  preferred.
 #'
-#'  \code{\link{gscale}} does the heavy lifting for mean-centering and scaling
+#'  [gscale()] does the heavy lifting for mean-centering and scaling
 #'  behind the scenes.
 #'
 #' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' 
+#' @family summ
 #'
 #' @examples
 #' if (requireNamespace("survey")) {
@@ -1047,8 +1046,7 @@ summ.svyglm <- function(
   model, scale = FALSE, confint = getOption("summ-confint", FALSE),
   ci.width = getOption("summ-ci.width", .95),
   digits = getOption("jtools-digits", default = 2),
-  pvals = getOption("summ-pvals", TRUE),
-  stars = getOption("summ-stars", FALSE), n.sd = 1, center = FALSE, 
+  pvals = getOption("summ-pvals", TRUE), n.sd = 1, center = FALSE, 
   transform.response = FALSE,
   exp = FALSE, vifs = getOption("summ-vifs", FALSE),
   model.info = getOption("summ-model.info", TRUE),
@@ -1089,13 +1087,13 @@ summ.svyglm <- function(
     if (scale == TRUE) {
 
       model <- scale_mod(model, n.sd = n.sd,
-                         scale.response = transform.response)
+                         scale.response = transform.response, ...)
       # Using information from summary()
       sum <- summary(model)
 
     } else if (center == TRUE && scale == FALSE) {
 
-      model <- center_mod(model, center.response = transform.response)
+      model <- center_mod(model, center.response = transform.response, ...)
       # Using information from summary()
       sum <- summary(model)
 
@@ -1270,7 +1268,7 @@ summ.svyglm <- function(
                  npreds = model$rank-df.int,
                  dispersion = dispersion, missing = missing,
                  confint = confint, ci.width = ci.width, pvals = pvals,
-                 test.stat = tcol, stars = stars,
+                 test.stat = tcol,
                  standardize.response = transform.response,
                  exp = exp,
                  scale.response = transform.response)
@@ -1295,9 +1293,7 @@ print.summ.svyglm <- function(x, ...) {
   # saving attributes as x (this was to make a refactoring easier)
   x <- attributes(j)
 
-    # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      stars = x$stars)
+  ctable <- j$coeftable
 
   if (x$model.info == TRUE) {
     # If it's linear...
@@ -1337,10 +1333,8 @@ print.summ.svyglm <- function(x, ...) {
   if (x$linear == TRUE) {
     cat("Standard errors: Robust\n")
   }
-
-  cat("\n")
-  print(md_table(ctable, format = getOption("summ.table.format", "markdown"),
-        align = "r"))
+  print(md_table(ctable, format = getOption("summ.table.format", "multiline"),
+                 sig.digits = FALSE, digits = x$digits))
 
   if (x$dispersion != 1) {
     cat("\n")
@@ -1377,9 +1371,8 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
   o_opt <- getOption("kableExtra.auto_format", NULL)
   options(kableExtra.auto_format = FALSE)
 
-  # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      add_col = TRUE, stars = x$stars)
+  # Helper function to deal with table rounding
+  ctable <- round_df_char(df = j$coeftable, digits = x$digits)
 
   if (x$model.info == TRUE) {
     if (x$lmFamily[1] == "gaussian" && x$lmFamily[2] == "identity") {
@@ -1433,7 +1426,7 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 
     stats %<>% to_kable(format = format, row.names = FALSE, col.names = NULL) 
 
-  }
+  } else {stats <- NULL}
 
   # Notifying user if variables altered from original fit
   ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
@@ -1458,14 +1451,14 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 
 #' Mixed effects regression summaries with options
 #'
-#' \code{summ} prints output for a regression model in a fashion similar to
-#' \code{summary}, but formatted differently with more options.
+#' \code{summ()} prints output for a regression model in a fashion similar to
+#' \code{summary()}, but formatted differently with more options.
 #'
 #' @param model A \code{\link[lme4]{merMod}} object.
 #' @param r.squared Calculate an r-squared model fit statistic? Default is
 #'  \code{TRUE}, but if it has errors or takes a long time to calculate you
 #'  may want to consider setting to FALSE.
-#' @param pvals Show p values and significance stars? If \code{FALSE}, these
+#' @param pvals Show p values? If \code{FALSE}, these
 #'  are not printed. Default is \code{TRUE}, except for merMod objects (see
 #'  details).
 #' @param exp If \code{TRUE}, reports exponentiated coefficients with
@@ -1497,13 +1490,13 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #' }
 #'
 #'  The \code{scale} and \code{center} options are performed via refitting
-#'  the model with \code{\link{scale_lm}} and \code{\link{center_lm}},
-#'  respectively. Each of those in turn uses \code{\link{gscale}} for the
+#'  the model with [scale_mod()] and [center_mod()],
+#'  respectively. Each of those in turn uses [gscale()] for the
 #'  mean-centering and scaling.
 #'
 #'  \code{merMod} models are a bit different than the others. The \code{lme4}
 #'  package developers have, for instance, made a decision not to report or
-#'  compute p values for \code{lmer} models. There are good reasons for this,
+#'  compute p values for \code{lmer()} models. There are good reasons for this,
 #'  most notably that the t-values produced are not "accurate" in the sense of
 #'  the Type I error rate. For certain large, balanced samples with many
 #'  groups, this is no big deal. What's
@@ -1517,7 +1510,7 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #'  it is best to just get the \pkg{pbkrtest} package.
 #'
 #'  By default, this function follows \code{lme4}'s lead and does not report
-#'  the p values for \code{lmer} models. If the user has \pkg{pbkrtest}
+#'  the p values for \code{lmer()} models. If the user has \pkg{pbkrtest}
 #'  installed, however, p values are reported using the Kenward-Roger
 #'  d.f. approximation unless \code{pvals = FALSE} or \code{t.df} is
 #'  set to something other than \code{NULL}. In publications,
@@ -1529,8 +1522,8 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #'  If you're looking for a simple test with no extra packages installed,
 #'  it is better to use the confidence
 #'  intervals and check to see if they exclude zero than use the t-test.
-#'  For users of \code{glmer}, see some of the advice there as well. While
-#'  \code{lme4} and by association \code{summ} does as well, they are
+#'  For users of \code{glmer()}, see some of the advice there as well. While
+#'  \code{lme4} and by association \code{summ()} does as well, they are
 #'  still imperfect.
 #'
 #'  You have some options to customize the output in this regard with the
@@ -1561,7 +1554,7 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #'  understand that it is not an unambiguous measure of model fit.
 #'
 #'  This package calculates R^2 for mixed models using an adapted version
-#'  of \code{\link[piecewiseSEM]{sem.model.fits}} from the \pkg{piecewiseSEM}
+#'  of \code{sem.model.fits()} from the \pkg{piecewiseSEM}
 #'  package. This is an implementation of the Nakagawa & Schielzeth (2013)
 #'  procedure with refinements by Johnson (2014). If you choose to report
 #'  the pseudo-R^2 in a publication, you should cite Nakagawa & Schielzeth
@@ -1580,10 +1573,10 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #'
 #'  Much other information can be accessed as attributes.
 #'
-#' @seealso \code{\link{scale_mod}} can simply perform the standardization if
+#' @seealso [scale_mod()] can simply perform the standardization if
 #'  preferred.
 #'
-#'  \code{\link{gscale}} does the heavy lifting for mean-centering and scaling
+#'  [gscale()] does the heavy lifting for mean-centering and scaling
 #'  behind the scenes.
 #'
 #'  [pbkrtest::get_ddf_Lb()] gets the Kenward-Roger degrees of
@@ -1594,6 +1587,8 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #'
 #' @author Jacob Long <\email{long.1377@@osu.edu}>
 #'
+#' @family summ
+#' 
 #' @examples
 #' if (requireNamespace("lme4")) {
 #'   library(lme4, quietly = TRUE)
@@ -1652,8 +1647,7 @@ summ.merMod <- function(
   ci.width = getOption("summ-ci.width", .95),
   conf.method = getOption("summ-conf.method", c("Wald", "profile", "boot")),
   digits = getOption("jtools-digits", default = 2), r.squared = TRUE,
-  pvals = getOption("summ-pvals", NULL), 
-  stars = getOption("summ-stars", FALSE), n.sd = 1, center = FALSE,
+  pvals = getOption("summ-pvals", NULL), n.sd = 1, center = FALSE,
   transform.response = FALSE, data = NULL, exp = FALSE, t.df = NULL,
   model.info = getOption("summ-model.info", TRUE),
   model.fit = getOption("summ-model.fit", TRUE),
@@ -1754,12 +1748,12 @@ summ.merMod <- function(
   if (scale == TRUE) {
 
     model <- scale_mod(model, n.sd = n.sd, scale.response = transform.response,
-                       data = data)
+                       data = data, ...)
 
   } else if (center == TRUE && scale == FALSE) {
 
     model <- center_mod(model, center.response = transform.response,
-                        data = data)
+                        data = data, ...)
 
   }
 
@@ -1829,7 +1823,8 @@ summ.merMod <- function(
   ses <- sum$coefficients[,2]
   ts <- sum$coefficients[,3]
   # Need proper name for test statistic
-  tcol <- colnames(sum$coefficients)[3]
+  tcol <- colnames(sum$coefficients)[which(colnames(sum$coefficients) %in%
+                                             c("t value", "z value"))]
   tcol <- gsub("value", "val.", tcol)
 
   dfs <- NULL
@@ -1859,7 +1854,7 @@ summ.merMod <- function(
       ts <- coefs[!is.na(coefs)] / ses
       dfs <- get_df_kr(model)
       params[["d.f."]] <- dfs
-      ps <- pt(abs(ts), lower.tail = F, dfs)
+      ps <- pt(abs(ts), lower.tail = F, dfs) * 2
       t1 <- Sys.time()
 
       if ((t1 - t0) > 10 & !getOption("pbkr_warned", FALSE)) {
@@ -1881,7 +1876,7 @@ summ.merMod <- function(
         p_calc <- "residual"
       }
 
-      ps <- pt(abs(ts), lower.tail = F, df)
+      ps <- pt(abs(ts), lower.tail = F, df) * 2
 
 
     }
@@ -1953,7 +1948,7 @@ summ.merMod <- function(
                  npreds = nrow(mat),
                  confint = confint, ci.width = ci.width, pvals = pvals,
                  df = df, p_calc = p_calc, r.squared = r.squared,
-                 failed.rsq = failed.rsq, test.stat = tcol, stars = stars,
+                 failed.rsq = failed.rsq, test.stat = tcol,
                  standardize.response = transform.response,
                  exp = exp, scale.response = transform.response,
                  re.table = re.table, groups.table = groups.table)
@@ -1980,9 +1975,8 @@ print.summ.merMod <- function(x, ...) {
   # saving attributes as x (this was to make a refactoring easier)
   x <- attributes(j)
 
-  # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      stars = x$stars)
+  # Helper function to deal with table rounding
+  ctable <- j$coeftable
 
   if (x$model.info == TRUE) {
     if (x$lmFamily[1] == "gaussian" && x$lmFamily[2] == "identity") {
@@ -2011,13 +2005,8 @@ print.summ.merMod <- function(x, ...) {
   }
 
   cat(underline("FIXED EFFECTS:\n"))
-  if ("d.f." %in% names(ctable)) {
-    ctable[,"d.f."] <- as.integer(ctable[,"d.f."])
-  }
-  
-  cat("\n")
-  print(md_table(ctable, format = getOption("summ.table.format", "markdown"),
-        align = "r"))
+  print(md_table(ctable, format = getOption("summ.table.format", "multiline"),
+                 sig.digits = FALSE, digits = x$digits))
   
   ## Explaining the origin of the p values if they were used
   if (x$pvals == TRUE & lme4::isLMM(j$model)) {
@@ -2060,8 +2049,8 @@ print.summ.merMod <- function(x, ...) {
     rtable <- round_df_char(j$rcoeftable, digits = x$digits, na_vals = "")
     #rownames(rtable) <- rep("", times = nrow(rtable))
     # print(rtable, row.names = FALSE)
-    cat("\n")
-    print(md_table(rtable, format = getOption("summ.table.format", "markdown"),
+    # cat("\n")
+    print(md_table(rtable, format = getOption("summ.table.format", "multiline"),
           align = "c", row.names = FALSE))
   }
 
@@ -2071,8 +2060,8 @@ print.summ.merMod <- function(x, ...) {
     gtable[, "# groups"] <- as.integer(gtable[, "# groups"])
     #rownames(gtable) <- rep("", times = nrow(gtable))
     # print(gtable, row.names = FALSE)
-    cat("\n")
-    print(md_table(gtable, format = getOption("summ.table.format", "markdown"),
+    # cat("\n")
+    print(md_table(gtable, format = getOption("summ.table.format", "multiline"),
           align = "c", row.names = FALSE))
   }
 
@@ -2092,7 +2081,8 @@ print.summ.merMod <- function(x, ...) {
 
 knit_print.summ.merMod <- function(x, options = NULL, ...) {
 
-  if (!nzchar(system.file(package = "kableExtra")) |       getOption("summ-normal-print", FALSE)) {
+  if (!nzchar(system.file(package = "kableExtra")) | 
+      getOption("summ-normal-print", FALSE)) {
     return(knitr::normal_print(x))
   }
 
@@ -2101,9 +2091,8 @@ knit_print.summ.merMod <- function(x, options = NULL, ...) {
   # saving attributes as x (this was to make a refactoring easier)
   x <- attributes(j)
 
-  # Helper function to deal with table rounding, significance stars
-  ctable <- add_stars(table = j$coeftable, digits = x$digits, p_vals = x$pvals,
-                      add_col = TRUE, stars = x$stars)
+  # Helper function to deal with table rounding 
+  ctable <- round_df_char(df = j$coeftable, digits = x$digits)
 
   format <- ifelse(knitr::is_latex_output(), yes = "latex", no = "html")
   if (length(format) == 0) {format <- "html"}
@@ -2237,18 +2226,19 @@ knit_print.summ.merMod <- function(x, options = NULL, ...) {
 
 #### utilities ###############################################################
 
-#' @title Set defaults for `summ` function
+#' @title Set defaults for `summ()` functions
 #'
 #' @description This function is convenience wrapper for manually setting
 #'  options using [options()]. This gives a handy way to, for instance,
-#'  set the arguments to be used in every call to `summ` in your script/session.
+#'  set the arguments to be used in every call to [`summ()`] in your 
+#'  script/session.
 #'
 #'  To make the settings persist across sessions, you can run this in your
 #'  `.Rprofile` file.
 #'
 #'  Note that arguments that do not apply (e.g., `robust` for `merMod` models)
 #'  are silently ignored when those types of models are used.
-#'
+#' @param table.format A format understood by [md_table()]
 #' @inheritParams summ.lm
 #' @inheritParams summ.merMod
 #'
@@ -2258,7 +2248,7 @@ knit_print.summ.merMod <- function(x, options = NULL, ...) {
 set_summ_defaults <- function(digits = NULL, model.info = NULL,
                               model.fit = NULL, pvals = NULL, robust = NULL,
                               confint = NULL, ci.width = NULL, vifs = NULL,
-                              conf.method = NULL, stars = NULL) {
+                              conf.method = NULL, table.format = NULL) {
 
   if ("confint" %in% names(match.call())) {
     options("summ-confint" = confint)
@@ -2285,10 +2275,10 @@ set_summ_defaults <- function(digits = NULL, model.info = NULL,
     options("summ-pvals" = pvals)
   }
   if ("conf.method" %in% names(match.call())) {
-    options("summ-conf.method" = pvals)
+    options("summ-conf.method" = conf.method)
   }
-  if ("stars" %in% names(match.call())) {
-    options("summ-stars" = stars)
+  if ("table.format" %in% names(match.call())) {
+    options("summ.table.format" = table.format)
   }
 
 }

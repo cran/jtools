@@ -159,24 +159,6 @@ all_vars <- function(formula) {
   }
 }
 
-# any_interaction <- function(formula) {
-#   any(attr(terms(formula), "order") > 1)
-# }
-# 
-# get_interactions <- function(formula) {
-#   if (any_interaction(formula)) {
-#     ts <- terms(formula)
-#     labs <- paste("~", attr(ts, "term.labels"))
-#     forms <- lapply(labs, as.formula)
-#     forms <- forms[which(attr(ts, "order") > 1)]
-#     ints <- lapply(forms, all.vars)
-#     names(ints) <- attr(ts, "term.labels")[which(attr(ts, "order") > 1)]
-#     return(ints)
-#   } else {
-#     stop_wrap("No interactions found in this formula.")
-#   }
-# }
-
 #### Weighted helpers ########################################################
 
 #' @title Weighted standard deviation calculation
@@ -310,19 +292,10 @@ coeftest <- function(x, vcov. = NULL, df = NULL, ...) {
 #' @importFrom stats pnorm
 
 coeftest.default <- function(x, vcov. = NULL, df = NULL, ...) {
-  ## use S4 methods if loaded
-  if (requireNamespace("stats4", quietly = TRUE)) {
-    coef0 <- stats4::coef
-    vcov0 <- stats4::vcov
-  } else {
-    coef0 <- coef
-    vcov0 <- vcov
-  }
-
   ## extract coefficients and standard errors
-  est <- coef0(x)
+  est <- coef(x)
   if (is.null(vcov.)) {
-    se <- vcov0(x)
+    se <- vcov(x)
   } else {
     if (is.function(vcov.)) {
       se <- vcov.(x, ...)

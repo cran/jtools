@@ -16,12 +16,21 @@ prepare_return_data <- function(model, data, return.orig.data,
   } else {
     if (return.orig.data == TRUE & partial.residuals == FALSE) {
       o <- list(predictions = tibble::as_tibble(pm), data = 
-                suppressMessages(d <- tibble::as_tibble(get_data(model))))
+                suppressMessages(d <- get_data(model)))
+      resp <- get_response_name(model)
       # If left-hand side is transformed, make new column in original data for
       # the transformed version and evaluate it
       if (is_lhs_transformed(as.formula(formula(model)))) {
-        o[[2]][get_response_name(model)] <- 
-          eval(get_lhs(as.formula(formula(model))), o[[2]])
+        o[[2]][resp] <- eval(get_lhs(as.formula(formula(model))), o[[2]])
+      }
+      # For binomial family, character/logical DVs can cause problems
+      if (family(model)$family == "binomial" &  !is.numeric(d[[resp]])) {
+        if (is.logical(d[[resp]])) {
+          o[[2]][[resp]] <- as.numeric(o[[2]][[resp]])
+        } else {
+          o[[2]][[resp]] <- 
+            as.numeric(o[[2]][[resp]] != zero_or_base(o[[2]][[resp]]))
+        }
       }
     } else {
       o <- list(predictions = tibble::as_tibble(pm), data = 
@@ -40,9 +49,9 @@ prepare_return_data <- function(model, data, return.orig.data,
 #' @title Generate predicted data for plotting results of regression models
 #'
 #' @description This is an alternate interface to the underlying tools that
-#'   make up [effect_plot()] as well as `interact_plot` and `cat_plot` from
-#'   the `interactions` package.
-#'   `make_predictions` creates the data to be plotted and adds information
+#'   make up [effect_plot()] as well as [interactions::interact_plot()] and
+#'   [interactions::cat_plot()] from the \pkg{interactions} package.
+#'   `make_predictions()` creates the data to be plotted and adds information
 #'   to the original data to make it more amenable for plotting with the
 #'   predicted data.
 #'   

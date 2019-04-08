@@ -11,12 +11,11 @@
   robust = getOption("summ-robust", FALSE), cluster = NULL,
   vifs = getOption("summ-vifs", FALSE),
   digits = getOption("jtools-digits", 2),
-  pvals = getOption("summ-pvals", TRUE),
-  stars = getOption("summ-stars", FALSE), n.sd = 1, center = FALSE,
+  pvals = getOption("summ-pvals", TRUE), n.sd = 1, center = FALSE,
   transform.response = FALSE, data = NULL, part.corr = FALSE,
   model.info = getOption("summ-model.info", TRUE),
   model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL,
-  ...)
+  vcov = NULL, ...)
 }
 \arguments{
 \item{model}{A \code{lm} object.}
@@ -55,10 +54,8 @@ digits for all jtools functions with
 \code{options("jtools-digits" = digits)} where digits is the desired
 number.}
 
-\item{pvals}{Show p values and significance stars? If \code{FALSE}, these
+\item{pvals}{Show p values? If \code{FALSE}, these
 are not printed. Default is \code{TRUE}.}
-
-\item{stars}{Show significance stars with p values? Default is FALSE.}
 
 \item{n.sd}{If \code{scale = TRUE}, how many standard deviations should
 predictors be divided by? Default is 1, though some suggest 2.}
@@ -89,8 +86,12 @@ name of DV, and number of predictors.}
 you can add/remove/reorder requested columns in the output. Not fully
 supported, for now.}
 
-\item{...}{This just captures extra arguments that may only work for other
-types of models.}
+\item{vcov}{You may provide your own variance-covariance matrix for the
+regression coefficients if you want to calculate standard errors in
+some way not accommodated by the \code{robust} and \code{cluster} options.}
+
+\item{...}{Among other things, arguments are passed to \code{\link[=scale_mod]{scale_mod()}} or
+\code{\link[=center_mod]{center_mod()}} when \code{center} or \code{scale} is \code{TRUE}.}
 }
 \value{
 If saved, users can access most of the items that are returned in
@@ -103,8 +104,8 @@ most useful in cases in which \code{scale = TRUE}.}
 Much other information can be accessed as attributes.
 }
 \description{
-\code{summ} prints output for a regression model in a fashion similar to
-\code{summary}, but formatted differently with more options.
+\code{summ()} prints output for a regression model in a fashion similar to
+\code{summary()}, but formatted differently with more options.
 }
 \details{
 By default, this function will print the following items to the
@@ -118,20 +119,20 @@ p values.
 }
 
 There are several options available for \code{robust}. The heavy
-lifting is done by \code{\link[sandwich]{vcovHC}}, where those are better
+lifting is done by \code{\link[sandwich:vcovHC]{sandwich::vcovHC()}}, where those are better
 described.
 Put simply, you may choose from \code{"HC0"} to \code{"HC5"}. Based on the
 recommendation of the developers of \pkg{sandwich}, the default is set to
 \code{"HC3"}. Stata's default is \code{"HC1"}, so that choice may be better
 if the goal is to replicate Stata's output. Any option that is understood
-by \code{vcovHC} will be accepted. Cluster-robust standard errors are
+by \code{vcovHC()} will be accepted. Cluster-robust standard errors are
 computed if \code{cluster} is set to the name of the input data's cluster
 variable or is a vector of clusters.
 
 The \code{scale} and \code{center} options are performed via
 refitting
-the model with \code{\link{scale_mod}} and \code{\link{center_mod}},
-respectively. Each of those in turn uses \code{\link{gscale}} for the
+the model with \code{\link[=scale_mod]{scale_mod()}} and \code{\link[=center_mod]{center_mod()}},
+respectively. Each of those in turn uses \code{\link[=gscale]{gscale()}} for the
 mean-centering and scaling.
 
 If using \code{part.corr = TRUE}, then you will get these two common
@@ -170,12 +171,17 @@ Public Health}, \emph{23}, 151–169.
 \url{https://doi.org/10.1146/annurev.publhealth.23.100901.140546}
 }
 \seealso{
-\code{\link{scale_mod}} can simply perform the standardization if
+\code{\link[=scale_mod]{scale_mod()}} can simply perform the standardization if
 preferred.
 
-\code{\link{gscale}} does the heavy lifting for mean-centering and scaling
+\code{\link[=gscale]{gscale()}} does the heavy lifting for mean-centering and scaling
 behind the scenes.
+
+Other summ: \code{\link{summ.glm}},
+  \code{\link{summ.merMod}}, \code{\link{summ.rq}},
+  \code{\link{summ.svyglm}}
 }
 \author{
 Jacob Long <\email{long.1377@osu.edu}>
 }
+\concept{summ}
