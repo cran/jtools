@@ -76,7 +76,7 @@
 #' @param y.label A character object specifying the desired x-axis label. If
 #'   \code{NULL}, the variable name is used.
 #'
-#' @param pred.labels A character vector of labels for categorical predicotrs.
+#' @param pred.labels A character vector of labels for categorical predictors.
 #'  If \code{NULL}, the default, the factor labels are used.
 #'
 #' @param main.title A character object that will be used as an overall title
@@ -275,7 +275,7 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
   if (!all(color.class == colors)) colors <- color.class
   
   pred_out <- make_predictions(model, pred = pred, pred.values = pred.values,
-                               at = NULL, center = centered,
+                               at = at, center = centered,
                                interval = interval, int.type = int.type, 
                                outcome.scale = outcome.scale, robust = robust,
                                cluster = cluster, vcov = vcov,

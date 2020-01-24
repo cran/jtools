@@ -1,4 +1,24 @@
-# jtools 2.0.1.9000
+# jtools 2.0.2
+
+Minor release. 
+
+Fixes:
+
+* Pseudo-R^2 calculations now handle GLMs with start values specified. (#63)
+* `effect_plot()` no longer silently ignores the `at =` argument.
+* `make_new_data()` no longer tries to calculate control values for variables
+included in `data` but not the model.
+* A documentation issue was causing errors on CRAN.
+
+Other changes:
+
+* `plot_coefs()` and `plot_summs()` can now accept a list of models as its 
+input. (#64)
+* `make_predictions()` and functions that depend on it (e.g., `effect_plot()`)
+now use `fitted()` to get predicted values from `brmsfit` objects, which 
+provide a smoother predicted line as would be expected.
+
+# jtools 2.0.1
 
 Minor release.
 

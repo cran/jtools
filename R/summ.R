@@ -925,7 +925,7 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
   }
 
   if (x$model.fit == T) {
-    if (format != "latex" && Sys.info()[['sysname']] != "Windows") {
+    if (format != "latex" & Sys.info()[['sysname']] != "Windows") {
       chi <- "\U1D6D8\u00B2("
       # alternately -> "\U0001D712\u00B2("
     } else if (format == "latex") {
@@ -1554,7 +1554,7 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #'  understand that it is not an unambiguous measure of model fit.
 #'
 #'  This package calculates R^2 for mixed models using an adapted version
-#'  of \code{sem.model.fits()} from the \pkg{piecewiseSEM}
+#'  of \code{rsquared()} from the \pkg{piecewiseSEM}
 #'  package. This is an implementation of the Nakagawa & Schielzeth (2013)
 #'  procedure with refinements by Johnson (2014). If you choose to report
 #'  the pseudo-R^2 in a publication, you should cite Nakagawa & Schielzeth
@@ -1582,7 +1582,7 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #'  [pbkrtest::get_ddf_Lb()] gets the Kenward-Roger degrees of
 #'  freedom if you have \pkg{pbkrtest} installed.
 #'
-#'  A tweaked version of [piecewiseSEM::sem.model.fits()] is used to
+#'  A tweaked version of [piecewiseSEM::rsquared()] is used to
 #'  generate the pseudo-R-squared estimates for linear models.
 #'
 #' @author Jacob Long <\email{long.1377@@osu.edu}>
@@ -1831,7 +1831,7 @@ summ.merMod <- function(
   p_calc <- NULL
 
   # lmerMod doesn't have p values, so
-  if (!sum$isLmer) {
+  if (!lme4::isLMM(model)) {
     ps <- sum$coefficients[,4]
     params[["p"]] <- ps
   } else {

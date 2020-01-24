@@ -29,19 +29,15 @@ find_S3_class <- function(generic, ..., package) {
 
   # not going to provide function, just function name as character
   # ch <- deparse(substitute(generic))
-
   f <- X <- function(x, ...) UseMethod("X")
   for (m in .S3methods(generic, envir = getNamespace(package))) {
     assign(sub(generic, "X", m, fixed = TRUE), "body<-"(f, value = m))
   }
 
   char_meth <- tryCatch(X(...), error = function(e) {return(NA)})
-
   if (is.na(char_meth)) {return(char_meth)}
-
   # Return the stub for dispatch to getS3method as class
   return(reg_match("(?<=\\.).*", char_meth, perl = TRUE))
-
 }
 
 # I'm sure stingr/stringi have this, but I don't want to import them
@@ -458,4 +454,44 @@ predict_rob <- function(model, .vcov = vcov(model), newdata = NULL,
 
   return(list(fit = fit, se.fit = se.fit))
 
+}
+
+## Kludge to fix glht compatibility
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(generics::tidy, glht)
+#' } else {
+#'   export(tidy.glht)
+#' }
+tidy.glht <- function (x, conf.int = FALSE, conf.level = 0.95, ...) {
+  if (!conf.int) {
+    tibble(lhs = rownames(x$linfct), rhs = x$rhs, estimate = stats::coef(x))
+  } else {
+    confs <- as.data.frame(confint(x, level = conf.level)$confint)
+    tibble(lhs = rownames(x$linfct), rhs = x$rhs, estimate = stats::coef(x),
+           conf.low = confs$lwr, conf.high = confs$upr)
+  }
+}
+
+#' @importFrom tibble tibble as_tibble
+#' @importFrom stats confint
+#' @rawNamespace 
+#' if (getRversion() >= "3.6.0") {
+#'   S3method(generics::tidy, summary.glht)
+#' } else {
+#'   export(tidy.summary.glht)
+#' }
+tidy.summary.glht <- function (x, conf.int = FALSE, conf.level = 0.95, ...) {
+  lhs_rhs <- tibble(lhs = rownames(x$linfct), rhs = x$rhs)
+  coef <- as_tibble(x$test[c("coefficients", "sigma", 
+                             "tstat", "pvalues")])
+  names(coef) <- c("estimate", "std.error", "statistic", 
+                   "p.value")
+  out <- as_tibble(cbind(lhs_rhs, coef))
+  if (conf.int) {
+    confs <- as.data.frame(confint(x, level = conf.level)$confint)
+    out$conf.low <- confs$lwr
+    out$conf.high <- confs$upr
+  }
+  out
 }
