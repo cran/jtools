@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 <meta name="author" content="Jacob Long" />
 
-<meta name="date" content="2020-01-24" />
+<meta name="date" content="2020-03-21" />
 
 <title>Tools for summarizing and visualizing regression models</title>
 
@@ -1430,6 +1429,7 @@ summary {
   border: none;
   display: inline-block;
   border-radius: 4px;
+  background-color: transparent;
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li {
@@ -1458,6 +1458,12 @@ summary {
 }
 }
 
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
 
 .toc-content {
   padding-left: 30px;
@@ -1530,7 +1536,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">Tools for summarizing and visualizing regression models</h1>
 <h4 class="author">Jacob Long</h4>
-<h4 class="date">2020-01-24</h4>
+<h4 class="date">2020-03-21</h4>
 
 </div>
 
