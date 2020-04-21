@@ -1,3 +1,19 @@
+# jtools 2.0.5
+
+Hotfix: Fixing failing tests on CRAN.
+
+# jtools 2.0.4
+
+Hotfix release:
+
+* The latest version of `ggplot2` (3.3.0) broke `theme_apa()`. That's fixed.
+* `theme_nice()` now takes advantage of a new `ggplot2` feature that aligns
+captions in a better way. 
+* `effect_plot()` no longer ignores the `colors` argument. 
+* `effect_plot()` and `make_predictions()` now work properly with multivariate
+and distributional `brms` models in which there is a different set of predictors
+in the different parts of the model. 
+
 # jtools 2.0.3
 
 New features:
