@@ -9,8 +9,9 @@
 #'  \code{ggplot2} rather than base graphics, which some similar functions use.
 #'
 #' @param model A regression model. The function is tested with \code{lm},
-#'   \code{glm}, \code{\link[survey]{svyglm}}, \code{\link[lme4]{merMod}},
-#'   \code{\link[quantreg]{rq}}, \code{\link[brms]{brmsfit}},
+#'   \code{glm}, \code{\link[survey]{svyglm}}, 
+#'   [`merMod`][lme4::merMod-class],
+#'   \code{\link[quantreg]{rq}}, `brmsfit`,
 #'   \code{stanreg} models.
 #'   Models from other classes may work as well but are not officially
 #'   supported. The model should include the interaction of interest.
@@ -276,7 +277,8 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
   
   pred_out <- make_predictions(model, pred = pred, pred.values = pred.values,
                                at = at, center = centered,
-                               interval = interval, int.type = int.type, 
+                               interval = interval, int.type = int.type,
+                               int.width = int.width,
                                outcome.scale = outcome.scale, robust = robust,
                                cluster = cluster, vcov = vcov,
                                set.offset = set.offset, return.orig.data = TRUE,

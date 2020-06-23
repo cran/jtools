@@ -1,3 +1,24 @@
+# jtools 2.1.0
+
+New:
+
+* A new dataset, `movies`, has been added. I will be gradually updating examples
+to use `movies` rather than R's much-used, built-in data.
+
+Bugfixes:
+
+* `effect_plot()` no longer ignores the `int.width` argument. Thanks to 
+Marco Giesselmann for reporting. (#82)
+* Fixed failing CRAN test due to `brms` deprecating the `bf_parse()` function.
+* Addressed breaking changes in upcoming `broom` 0.7.0 release. (#83)
+* `make_predictions()` and its associated dependencies in this and other 
+packages now handles `scale()`'d variables correctly. (Issue
+[#33](https://github.com/jacob-long/interactions/issues/33) for the 
+`interactions` package)
+* Several functions now more sensibly handle survey data with replicate weights,
+which also stops errors with survey data with classes from the `srvyr` package.
+Thanks to Mark White for reporting. (#84)
+
 # jtools 2.0.5
 
 Hotfix: Fixing failing tests on CRAN.

@@ -43,8 +43,9 @@ effect_plot(
 }
 \arguments{
 \item{model}{A regression model. The function is tested with \code{lm},
-\code{glm}, \code{\link[survey]{svyglm}}, \code{\link[lme4]{merMod}},
-\code{\link[quantreg]{rq}}, \code{\link[brms]{brmsfit}},
+\code{glm}, \code{\link[survey]{svyglm}},
+\code{\link[lme4:merMod-class]{merMod}},
+\code{\link[quantreg]{rq}}, \code{brmsfit},
 \code{stanreg} models.
 Models from other classes may work as well but are not officially
 supported. The model should include the interaction of interest.}
@@ -195,7 +196,7 @@ uncertainty of the predictions very well. It is best to at least use the
 
 \item{cat.interval.geom}{For categorical by categorical interactions.
 One of "errorbar" or "linerange". If the former,
-\code{\link[ggplot2:geom_errorbar]{ggplot2::geom_errorbar()}} is used. If the latter,
+\code{\link[ggplot2:geom_linerange]{ggplot2::geom_errorbar()}} is used. If the latter,
 \code{\link[ggplot2:geom_linerange]{ggplot2::geom_linerange()}} is used.}
 
 \item{cat.pred.point.size}{(for categorical \code{pred})
