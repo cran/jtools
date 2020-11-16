@@ -12,34 +12,112 @@
 
 <meta name="author" content="Jacob Long" />
 
-<meta name="date" content="2020-06-22" />
+<meta name="date" content="2020-11-15" />
 
 <title>Calculate correlations and correlation tables with complex survey data</title>
 
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+<style type="text/css">
+a.anchor-section {margin-left: 10px; visibility: hidden; color: inherit;}
+a.anchor-section::before {content: '#';}
+.hasAnchor:hover a.anchor-section {visibility: visible;}
+</style>
+<script>// Anchor sections v1.0 written by Atsushi Yasumoto on Oct 3rd, 2020.
+document.addEventListener('DOMContentLoaded', function() {
+  // Do nothing if AnchorJS is used
+  if (typeof window.anchors === 'object' && anchors.hasOwnProperty('hasAnchorJSLink')) {
+    return;
+  }
+
+  const h = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+  // Do nothing if sections are already anchored
+  if (Array.from(h).some(x => x.classList.contains('hasAnchor'))) {
+    return null;
+  }
+
+  // Use section id when pandoc runs with --section-divs
+  const section_id = function(x) {
+    return ((x.classList.contains('section') || (x.tagName === 'SECTION'))
+            ? x.id : '');
+  };
+
+  // Add anchors
+  h.forEach(function(x) {
+    const id = x.id || section_id(x.parentElement);
+    if (id === '') {
+      return null;
+    }
+    let anchor = document.createElement('a');
+    anchor.href = '#' + id;
+    anchor.classList = ['anchor-section'];
+    x.classList.add('hasAnchor');
+    x.appendChild(anchor);
+  });
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
 
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css" data-origin="pandoc">
-a.sourceLine { display: inline-block; line-height: 1.25; }
-a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
-a.sourceLine:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
 div.sourceCode { margin: 1em 0; }
 pre.sourceCode { margin: 0; }
 @media screen {
 div.sourceCode { overflow: auto; }
 }
 @media print {
-code.sourceCode { white-space: pre-wrap; }
-a.sourceLine { text-indent: -1em; padding-left: 1em; }
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
-pre.numberSource a.sourceLine
-  { position: relative; left: -4em; }
-pre.numberSource a.sourceLine::before
-  { content: attr(title);
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
     position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; pointer-events: all; display: inline-block;
+    border: none; display: inline-block;
     -webkit-touch-callout: none; -webkit-user-select: none;
     -khtml-user-select: none; -moz-user-select: none;
     -ms-user-select: none; user-select: none;
@@ -48,9 +126,9 @@ pre.numberSource a.sourceLine::before
   }
 pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
 div.sourceCode
-  {  }
+  {   }
 @media screen {
-a.sourceLine::before { text-decoration: underline; }
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 code span.al { color: #ff0000; font-weight: bold; } /* Alert */
 code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
@@ -301,25 +379,25 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Calculate correlations and correlation tables with complex survey data</h1>
 <h4 class="author">Jacob Long</h4>
-<h4 class="date">2020-06-22</h4>
+<h4 class="date">2020-11-15</h4>
 
 
 
 <p>The <code>survey</code> package is one of R’s best tools for those working in the social sciences. For many, it saves you from needing to use commercial software for research that uses survey data. However, it lacks one function that many academic researchers often need to report in publications: correlations. The <code>svycor</code> function in <code>jtools</code> helps to fill that gap.</p>
-<p>A note, however, is necessary. The initial motivation to add this feature comes from a <a href="http://stackoverflow.com/questions/34418822/pearson-correlation-coefficient-in-rs-survey-package#41031088">response to a question</a> about calculating correlations with the <code>survey</code> package written by Thomas Lumley, the <code>survey</code> package author. All that is good about this function should be attributed to Dr. Lumley; all that is wrong with it should be attributed to me (Jacob).</p>
+<p>A note, however, is necessary. The initial motivation to add this feature comes from a <a href="https://stackoverflow.com/questions/34418822/pearson-correlation-coefficient-in-rs-survey-package#41031088">response to a question</a> about calculating correlations with the <code>survey</code> package written by Thomas Lumley, the <code>survey</code> package author. All that is good about this function should be attributed to Dr. Lumley; all that is wrong with it should be attributed to me (Jacob).</p>
 <p>With that said, let’s look at an example. First, we need to get a <code>survey.design</code> object. This one is built into the <code>survey</code> package.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">library</span>(survey)</a>
-<a class="sourceLine" id="cb1-2" title="2"><span class="kw">data</span>(api)</a>
-<a class="sourceLine" id="cb1-3" title="3">dstrat &lt;-<span class="st"> </span><span class="kw">svydesign</span>(<span class="dt">id =</span> <span class="op">~</span><span class="dv">1</span>,<span class="dt">strata =</span> <span class="op">~</span>stype, <span class="dt">weights =</span> <span class="op">~</span>pw, <span class="dt">data =</span> apistrat, <span class="dt">fpc=</span><span class="op">~</span>fpc)</a></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">library</span>(survey)</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="kw">data</span>(api)</span>
+<span id="cb1-3"><a href="#cb1-3"></a>dstrat &lt;-<span class="st"> </span><span class="kw">svydesign</span>(<span class="dt">id =</span> <span class="op">~</span><span class="dv">1</span>,<span class="dt">strata =</span> <span class="op">~</span>stype, <span class="dt">weights =</span> <span class="op">~</span>pw, <span class="dt">data =</span> apistrat, <span class="dt">fpc=</span><span class="op">~</span>fpc)</span></code></pre></div>
 <div id="basic-use" class="section level2">
 <h2>Basic use</h2>
 <p>The necessary arguments are no different than when using <code>svyvar</code>. Specify, using an equation, which variables (and from which design) to include. It doesn’t matter which side of the equation the variables are on.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</a></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</span></code></pre></div>
 <pre><code>      api00 api99
 api00  1.00  0.98
 api99  0.98  1.00</code></pre>
 <p>You can specify with the <code>digits =</code> argument how many digits past the decimal point should be printed.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1"><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>)</span></code></pre></div>
 <pre><code>       api00  api99
 api00 1.0000 0.9759
 api99 0.9759 1.0000</code></pre>
@@ -329,38 +407,38 @@ api99 0.9759 1.0000</code></pre>
 <h2>Statistical significance tests</h2>
 <p>One thing that <code>survey</code> won’t do for you is give you <em>p</em> values for the null hypothesis that <span class="math inline">\(r = 0\)</span>. While at first blush finding the <em>p</em> value might seem like a simple procedure, complex surveys will almost always violate the important distributional assumptions that go along with simple hypothesis tests of the correlation coefficient. There is not a clear consensus on the appropriate way to conduct hypothesis tests in this context, due in part to the fact that most analyses of complex surveys occurs in the context of multiple regression rather than simple bivariate cases.</p>
 <p>If <code>sig.stats = TRUE</code>, then <code>svycor</code> will use the <code>wtd.cor</code> function from the <code>weights</code> package to conduct hypothesis tests. The <em>p</em> values are derived from a bootstrap procedure in which the weights define sampling probability. The <code>bootn =</code> argument is given to <code>wtd.cor</code> to define the number of simulations to run. This can significantly increase the running time for large samples and/or large numbers of simulations. The <code>mean1</code> argument tells <code>wtd.cor</code> whether it should treat your sample size as the number of observations in the survey design (the number of rows in the data frame) or the sum of the weights. Usually, the former is desired, so the default value of <code>mean1</code> is <code>TRUE</code>.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1"><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>, <span class="dt">sig.stats =</span> <span class="ot">TRUE</span>, <span class="dt">bootn =</span> <span class="dv">2000</span>, <span class="dt">mean1 =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>, <span class="dt">sig.stats =</span> <span class="ot">TRUE</span>, <span class="dt">bootn =</span> <span class="dv">2000</span>, <span class="dt">mean1 =</span> <span class="ot">TRUE</span>)</span></code></pre></div>
 <pre><code>      api00   api99  
 api00 1       0.9759*
 api99 0.9759* 1      </code></pre>
 <p>When using <code>sig.stats = TRUE</code>, the correlation parameter estimates come from the bootstrap procedure rather than the simpler method based on the survey-weighted covariance matrix when <code>sig.stats = FALSE</code>.</p>
 <p>By saving the output of the function, you can extract non-rounded coefficients, <em>p</em> values, and standard errors.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" title="1">c &lt;-<span class="st"> </span><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>, <span class="dt">sig.stats =</span> <span class="ot">TRUE</span>, <span class="dt">bootn =</span> <span class="dv">2000</span>, <span class="dt">mean1 =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb8-2" title="2"></a>
-<a class="sourceLine" id="cb8-3" title="3">c<span class="op">$</span>cors</a></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a>c &lt;-<span class="st"> </span><span class="kw">svycor</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat, <span class="dt">digits =</span> <span class="dv">4</span>, <span class="dt">sig.stats =</span> <span class="ot">TRUE</span>, <span class="dt">bootn =</span> <span class="dv">2000</span>, <span class="dt">mean1 =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb8-2"><a href="#cb8-2"></a></span>
+<span id="cb8-3"><a href="#cb8-3"></a>c<span class="op">$</span>cors</span></code></pre></div>
 <pre><code>          api00     api99
 api00 1.0000000 0.9759047
 api99 0.9759047 1.0000000</code></pre>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" title="1">c<span class="op">$</span>p.values</a></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>c<span class="op">$</span>p.values</span></code></pre></div>
 <pre><code>      api00 api99
 api00     0     0
 api99     0     0</code></pre>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" title="1">c<span class="op">$</span>std.err</a></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a>c<span class="op">$</span>std.err</span></code></pre></div>
 <pre><code>            api00       api99
-api00 0.000000000 0.003761789
-api99 0.003761789 0.000000000</code></pre>
+api00 0.000000000 0.003590157
+api99 0.003590157 0.000000000</code></pre>
 </div>
 <div id="technical-details" class="section level2">
 <h2>Technical details</h2>
 <p>The heavy lifting behind the scenes is done by <code>svyvar</code>, which from its output you may not realize also calculates covariance.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" title="1"><span class="kw">svyvar</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</a></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a><span class="kw">svyvar</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</span></code></pre></div>
 <pre><code>      variance     SE
 api00    15191 1255.7
 api99    16518 1318.4</code></pre>
 <p>But if you save the <code>svyvar</code> object, you can see that there’s more than meets the eye.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" title="1">var &lt;-<span class="st"> </span><span class="kw">svyvar</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</a>
-<a class="sourceLine" id="cb16-2" title="2">var &lt;-<span class="st"> </span><span class="kw">as.matrix</span>(var)</a>
-<a class="sourceLine" id="cb16-3" title="3">var</a></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a>var &lt;-<span class="st"> </span><span class="kw">svyvar</span>(<span class="op">~</span>api00 <span class="op">+</span><span class="st"> </span>api99, <span class="dt">design =</span> dstrat)</span>
+<span id="cb16-2"><a href="#cb16-2"></a>var &lt;-<span class="st"> </span><span class="kw">as.matrix</span>(var)</span>
+<span id="cb16-3"><a href="#cb16-3"></a>var</span></code></pre></div>
 <pre><code>         api00    api99
 api00 15190.59 15458.83
 api99 15458.83 16518.24
@@ -373,8 +451,8 @@ api99 1561998 1657352 1657352 1738266
 attr(,&quot;statistic&quot;)
 [1] &quot;variance&quot;</code></pre>
 <p>Once we know that, it’s just a matter of using R’s <code>cov2cor</code> function and cleaning up the output.</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" title="1">cor &lt;-<span class="st"> </span><span class="kw">cov2cor</span>(var)</a>
-<a class="sourceLine" id="cb18-2" title="2">cor</a></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1"></a>cor &lt;-<span class="st"> </span><span class="kw">cov2cor</span>(var)</span>
+<span id="cb18-2"><a href="#cb18-2"></a>cor</span></code></pre></div>
 <pre><code>          api00     api99
 api00 1.0000000 0.9759047
 api99 0.9759047 1.0000000
@@ -387,14 +465,14 @@ api99 1561998 1657352 1657352 1738266
 attr(,&quot;statistic&quot;)
 [1] &quot;variance&quot;</code></pre>
 <p>Now to get rid of that covariance matrix…</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" title="1">cor &lt;-<span class="st"> </span>cor[<span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(cor), <span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(cor)]</a>
-<a class="sourceLine" id="cb20-2" title="2">cor</a></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1"></a>cor &lt;-<span class="st"> </span>cor[<span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(cor), <span class="dv">1</span><span class="op">:</span><span class="kw">nrow</span>(cor)]</span>
+<span id="cb20-2"><a href="#cb20-2"></a>cor</span></code></pre></div>
 <pre><code>          api00     api99
 api00 1.0000000 0.9759047
 api99 0.9759047 1.0000000</code></pre>
 <p><code>svycor</code> has its own print method, so you won’t see so many digits past the decimal point. You can extract the un-rounded matrix, however.</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb22-1" title="1">out &lt;-<span class="st"> </span><span class="kw">svycor</span>(<span class="op">~</span>api99 <span class="op">+</span><span class="st"> </span>api00, <span class="dt">design =</span> dstrat)</a>
-<a class="sourceLine" id="cb22-2" title="2">out<span class="op">$</span>cors</a></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1"></a>out &lt;-<span class="st"> </span><span class="kw">svycor</span>(<span class="op">~</span>api99 <span class="op">+</span><span class="st"> </span>api00, <span class="dt">design =</span> dstrat)</span>
+<span id="cb22-2"><a href="#cb22-2"></a>out<span class="op">$</span>cors</span></code></pre></div>
 <pre><code>          api99     api00
 api99 1.0000000 0.9759047
 api00 0.9759047 1.0000000</code></pre>
