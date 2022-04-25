@@ -42,7 +42,8 @@ j_summ <- summ
 #' @param model A \code{lm} object.
 #'
 #' @param scale If \code{TRUE}, reports standardized regression
-#'   coefficients. Default is \code{FALSE}.
+#'   coefficients by scaling and mean-centering input data (the latter can be 
+#'   changed via the `scale.only` argument). Default is \code{FALSE}.
 #'
 #' @param vifs If \code{TRUE}, adds a column to output with variance inflation
 #'   factors (VIF). Default is \code{FALSE}.
@@ -67,7 +68,9 @@ j_summ <- summ
 #'
 #' @param cluster For clustered standard errors, provide the column name of
 #'   the cluster variable in the input data frame (as a string). Alternately,
-#'   provide a vector of clusters.
+#'   provide a vector of clusters. Note that you must set `robust` to either
+#'   "HC1", "HC2", or "HC3" in order to have clustered standard errors ("HC4"
+#'   and "HC5" are not supported.  
 #'
 #' @param digits An integer specifying the number of digits past the decimal to
 #'   report in the output. Default is 2. You can change the default number of
@@ -82,7 +85,13 @@ j_summ <- summ
 #'  predictors be divided by? Default is 1, though some suggest 2.
 #'
 #' @param center If you want coefficients for mean-centered variables but don't
-#'    want to standardize, set this to \code{TRUE}.
+#'    want to standardize, set this to \code{TRUE}. Note that setting this to 
+#'    false does not affect whether `scale` mean-centers variables. Use 
+#'    `scale.only` for that.
+#'    
+#' @param scale.only If you want to scale but not center, set this to `TRUE`.
+#'    Note that for legacy reasons, setting `scale = TRUE` and `center = FALSE`
+#'    will not achieve the same effect. Default is `FALSE`.
 #'
 #' @param transform.response Should scaling/centering apply to response
 #'    variable? Default is \code{FALSE}.
@@ -169,7 +178,7 @@ j_summ <- summ
 #'  [gscale()] does the heavy lifting for mean-centering and scaling
 #'  behind the scenes.
 #'
-#' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' @author Jacob Long \email{jacob.long@@sc.edu}
 #'
 #' @family summ
 #' 
@@ -207,8 +216,9 @@ summ.lm <- function(
   robust = getOption("summ-robust", FALSE), cluster = NULL,
   vifs = getOption("summ-vifs", FALSE),
   digits = getOption("jtools-digits", 2), pvals = getOption("summ-pvals", TRUE),
-  n.sd = 1, center = FALSE, transform.response = FALSE, data = NULL,
-  part.corr = FALSE, model.info = getOption("summ-model.info", TRUE),
+  n.sd = 1, center = FALSE, transform.response = FALSE, scale.only = FALSE,
+  data = NULL, part.corr = FALSE, 
+  model.info = getOption("summ-model.info", TRUE),
   model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL, 
   vcov = NULL, ...) {
 
@@ -231,28 +241,22 @@ summ.lm <- function(
   the_env <- parent.frame(n = 2)
 
   # Using information from summary()
-  sum <- summary(model)
+  the_sum <- summary(model)
 
   # Check missing obs
-  missing <- length(sum$na.action)
+  missing <- length(the_sum$na.action)
 
   # Standardized betas
   if (scale == TRUE) {
-
     model <- scale_mod(model, n.sd = n.sd,
                       scale.response = transform.response,
-                      data = data, ...)
-    # Using information from summary()
-    sum <- summary(model)
-
+                      data = data, center = !scale.only, ...)
   } else if (center == TRUE && scale == FALSE) {
-
     model <- center_mod(model, center.response = transform.response,
                         data = data, ...)
-    # Using information from summary()
-    sum <- summary(model)
-
   }
+  # Using information from summary()
+  the_sum <- summary(model)
 
   j <- structure(j, standardize = scale, vifs = vifs, robust = robust,
                  digits = digits, model.info = model.info,
@@ -273,8 +277,8 @@ summ.lm <- function(
   j <- structure(j, n = n)
 
   # Get R-squared and adjusted R-squared
-  rsq <- unname(sum$r.squared)
-  arsq <- unname(sum$adj.r.squared)
+  rsq <- unname(the_sum$r.squared)
+  arsq <- unname(the_sum$adj.r.squared)
 
   # List of names of predictors
   ivs <- names(coefficients(model))
@@ -284,9 +288,9 @@ summ.lm <- function(
   params <- list("Est." = coefs)
 
   # Model statistics
-  fstat <- unname(sum$fstatistic[1])
-  fnum <- unname(sum$fstatistic[2])
-  fden <- unname(sum$fstatistic[3])
+  fstat <- unname(the_sum$fstatistic[1])
+  fnum <- unname(the_sum$fstatistic[2])
+  fden <- unname(the_sum$fstatistic[3])
   if (!is.null(fstat)) {
     modpval <- pf(fstat, fnum, fden, lower.tail = FALSE)
   } else {modpval <- NULL}
@@ -301,16 +305,20 @@ summ.lm <- function(
     params[["VIF"]] <- tvifs
   }
 
+  if (!is.null(cluster) && identical(FALSE, robust)) {
+    warn_wrap("Cluster argument is being ignored. To have clustered standard
+              errors, you must set the 'robust' argument to 'HC1', 'HC2', or
+              'HC3'.")
+  }
   # Standard errors and t-statistics
-  if (identical(FALSE, robust) & is.null(vcov)) {
+  if (identical(FALSE, robust) && is.null(vcov)) {
 
-    ses <- coef(sum)[,2]
-    ts <- coef(sum)[,3]
-    ps <- coef(sum)[,4]
+    ses <- coef(the_sum)[,2]
+    ts <- coef(the_sum)[,3]
+    ps <- coef(the_sum)[,4]
     use_cluster <- FALSE
 
   } else {
-
     # Pass to robust helper function
     rob_info <- do_robust(model, robust, cluster, data, vcov)
 
@@ -320,7 +328,6 @@ summ.lm <- function(
 
     use_cluster <- rob_info$use_cluster
     robust <- rob_info$robust
-
   }
 
   # Handle rank-deficient models
@@ -346,17 +353,15 @@ summ.lm <- function(
   # Store cis in list
   cis <- list(lci, uci)
   names(cis) <- labs
-
+  # Add the CI to the parameters
   params[names(cis)] <- cis
 
+  # Calculate partial correlations
   if (part.corr == TRUE) {
-
     pcs <- part_corr(ts, df.int, rsq, robust, n)
-
     partial_corr <- pcs$partial_corrs
     part_corr <- pcs$semipart_corrs
     params[c("partial.r", "part.r")] <- list(partial_corr, part_corr)
-
   }
 
   part.corr.arg <- if (part.corr) {c("partial.r", "part.r")} else {NULL}
@@ -374,7 +379,7 @@ summ.lm <- function(
                  standardize.response = transform.response,
                  scale.response = transform.response,
                  transform.response = transform.response,
-                 exp = FALSE, vcov = vcov)
+                 exp = FALSE, vcov = vcov, scale.only = scale.only)
 
   j$coeftable <- mat
   j$model <- model
@@ -402,7 +407,7 @@ print.summ.lm <- function(x, ...) {
     print_mod_info(missing = x$missing, n = x$n, dv = x$dv, type = type)
   }
 
-  if (x$model.fit == T && !is.null(x$modpval)) {
+  if (x$model.fit == TRUE && !is.null(x$modpval)) {
     stats <- paste(italic("F"), "(", x$fnum, ",", x$fden, ") = ",
         num_print(x$fstat, digits = x$digits), ", ", italic("p"), " = ",
         num_print(x$modpval, digits = x$digits), "\n",
@@ -417,7 +422,8 @@ print.summ.lm <- function(x, ...) {
                  sig.digits = FALSE, digits = x$digits))
 
   # Notifying user if variables altered from original fit
-  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd,
+                        x$scale.only)
   if (!is.null(ss)) {cat("\n", ss, "\n", sep = "")}
 
 }
@@ -475,7 +481,7 @@ knit_print.summ.lm <- function(x, options = NULL, ...) {
     mod_meta <- NULL
   }
 
-  if (x$model.fit == T && !is.null(x$modpval)) {
+  if (x$model.fit == TRUE && !is.null(x$modpval)) {
     stats <- data.frame(datum = c(paste0("F(", x$fnum, ",", x$fden, ")"),
                        "R\u00B2", "Adj. R\u00B2"),
                   value = c(num_print(x$fstat, digits = x$digits),
@@ -488,7 +494,8 @@ knit_print.summ.lm <- function(x, options = NULL, ...) {
 
   se_info <- get_se_info(x$robust, x$use_cluster, manual = "OLS", vcov = x$vcov)
   # Notifying user if variables altered from original fit
-  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd,
+                        x$scale.only)
   ss <- if (!is.null(ss)) {paste(";", ss)} else {ss}
   cap <- paste0("Standard errors: ", se_info, ss)
 
@@ -563,7 +570,7 @@ knit_print.summ.lm <- function(x, options = NULL, ...) {
 #'  [gscale()] does the heavy lifting for mean-centering and scaling
 #'  behind the scenes.
 #'
-#' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' @author Jacob Long \email{jacob.long@@sc.edu}
 #' 
 #' @family summ
 #'  
@@ -606,7 +613,7 @@ summ.glm <- function(
   vifs = getOption("summ-vifs", FALSE),
   digits = getOption("jtools-digits", default = 2),
   exp = FALSE, pvals = getOption("summ-pvals", TRUE), n.sd = 1,
-  center = FALSE, transform.response = FALSE, data = NULL,
+  center = FALSE, transform.response = FALSE, scale.only = FALSE, data = NULL,
   model.info = getOption("summ-model.info", TRUE),
   model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL,
   vcov = NULL, ...) {
@@ -630,28 +637,27 @@ summ.glm <- function(
   the_env <- parent.frame(n = 2)
 
   # Using information from summary()
-  sum <- summary(model)
+  the_sum <- summary(model)
 
   # Check missing obs
-  missing <- length(sum$na.action)
+  missing <- length(the_sum$na.action)
 
   # Standardized betas
   if (scale == TRUE) {
 
     model <- scale_mod(model, n.sd = n.sd, scale.response = transform.response,
-                       data = data, ...)
+                       data = data, center = !scale.only, ...)
     # Using information from summary()
-    sum <- summary(model)
+    the_sum <- summary(model)
 
   } else if (center == TRUE && scale == FALSE) {
 
     model <- center_mod(model, center.response = transform.response,
                         data = data, ...)
     # Using information from summary()
-    sum <- summary(model)
+    the_sum <- summary(model)
 
   }
-
 
   j <- structure(j, standardize = scale, vifs = vifs, digits = digits,
                  model.info = model.info, model.fit = model.fit, n.sd = n.sd,
@@ -705,11 +711,16 @@ summ.glm <- function(
   }
 
   # Standard errors and t-statistics
-  if (identical(FALSE, robust) & is.null(vcov)) {
+  if (!is.null(cluster) && identical(FALSE, robust)) {
+    warn_wrap("Cluster argument is being ignored. To have clustered standard
+              errors, you must set the 'robust' argument to 'HC1', 'HC2', or
+              'HC3'.")
+  }
+  if (identical(FALSE, robust) && is.null(vcov)) {
 
-    ses <- coef(sum)[,2]
-    ts <- coef(sum)[,3]
-    ps <- coef(sum)[,4]
+    ses <- coef(the_sum)[,2]
+    ts <- coef(the_sum)[,3]
+    ps <- coef(the_sum)[,4]
     use_cluster <- FALSE
 
   } else {
@@ -736,7 +747,7 @@ summ.glm <- function(
     ses <- temp_vec
   }
   # Need proper name for test statistic
-  tcol <- colnames(coef(sum))[3]
+  tcol <- colnames(coef(the_sum))[3]
   tcol <- gsub("value", "val.", tcol)
   # Add SE, test statistic, p to params
   params[c("S.E.", tcol, "p")] <- list(ses, ts, ps)
@@ -788,7 +799,7 @@ summ.glm <- function(
   mat <- create_table(params = params, which.cols = which.cols, ivs = ivs)
 
   # Extract dispersion parameter
-  dispersion <- sum$dispersion
+  dispersion <- the_sum$dispersion
 
   j <- structure(j, rsq = rsq, rsqmc = rsqmc, dv = names(model$model[1]),
                  npreds = model$rank - df.int, dispersion = dispersion,
@@ -799,7 +810,8 @@ summ.glm <- function(
                  standardize.response = transform.response,
                  exp = exp,
                  scale.response = transform.response,
-                 lmFamily = model$family, chisq = chisq, vcov = vcov)
+                 lmFamily = model$family, chisq = chisq, vcov = vcov, 
+                 scale.only = scale.only)
 
   j$coeftable <- mat
   j$model <- model
@@ -858,7 +870,8 @@ print.summ.glm <- function(x, ...) {
   }
 
   # Notifying user if variables altered from original fit
-  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd,
+                        x$scale.only)
   if (!is.null(ss)) {cat("\n", ss, "\n", sep = "")}
 
 }
@@ -925,9 +938,9 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
   }
 
   if (x$model.fit == T) {
-    if (format != "latex" & Sys.info()[['sysname']] != "Windows") {
+    if (format != "latex" && Sys.info()[['sysname']] != "Windows") {
       chi <- "\U1D6D8\u00B2("
-      # alternately -> "\U0001D712\u00B2("
+      # alternately ... "\U0001D712\u00B2("
     } else if (format == "latex") {
       chi <- "$\\chi^2$("
     } else if (format == "html") {
@@ -954,7 +967,8 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
 
   se_info <- get_se_info(x$robust, x$use_cluster, vcov = x$vcov)
   # Notifying user if variables altered from original fit
-  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd,
+                        x$scale.only)
   ss <- if (!is.null(ss)) {paste(";", ss)} else {ss}
   cap <- paste0("Standard errors: ", se_info, ss)
 
@@ -1022,7 +1036,7 @@ knit_print.summ.glm <- function(x, options = NULL, ...) {
 #'  [gscale()] does the heavy lifting for mean-centering and scaling
 #'  behind the scenes.
 #'
-#' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' @author Jacob Long \email{jacob.long@@sc.edu}
 #' 
 #' @family summ
 #'
@@ -1047,7 +1061,7 @@ summ.svyglm <- function(
   ci.width = getOption("summ-ci.width", .95),
   digits = getOption("jtools-digits", default = 2),
   pvals = getOption("summ-pvals", TRUE), n.sd = 1, center = FALSE, 
-  transform.response = FALSE,
+  transform.response = FALSE, scale.only = FALSE,
   exp = FALSE, vifs = getOption("summ-vifs", FALSE),
   model.info = getOption("summ-model.info", TRUE),
   model.fit = getOption("summ-model.fit", TRUE), which.cols = NULL, ...) {
@@ -1071,10 +1085,10 @@ summ.svyglm <- function(
   the_env <- parent.frame(n = 2)
 
   # Using information from summary()
-  sum <- summary(model)
+  the_sum <- summary(model)
 
   # Check missing obs
-  missing <- length(sum$na.action)
+  missing <- length(the_sum$na.action)
 
   if ("robust" %in% names(dots)) {
     warning("Robust standard errors are reported by default\n in the ",
@@ -1086,22 +1100,20 @@ summ.svyglm <- function(
     # Standardized betas
     if (scale == TRUE) {
 
-      model <- scale_mod(model, n.sd = n.sd,
+      model <- scale_mod(model, n.sd = n.sd, center = !scale.only,
                          scale.response = transform.response, ...)
       # Using information from summary()
-      sum <- summary(model)
+      the_sum <- summary(model)
 
     } else if (center == TRUE && scale == FALSE) {
 
       model <- center_mod(model, center.response = transform.response, ...)
       # Using information from summary()
-      sum <- summary(model)
+      the_sum <- summary(model)
 
     }
   } else {
-
-    design <- model$survey.design
-
+    the_sum <- summary(model)
   }
 
   j <- structure(j, standardize = scale, vifs = vifs, digits = digits,
@@ -1109,8 +1121,6 @@ summ.svyglm <- function(
                  n.sd = n.sd, center = center, call = the_call,
                  env = the_env, scale = scale,
                  transform.response = transform.response)
-
-
 
   # Check if linear model
   if (model$family[1] == "gaussian" && model$family[2] == "identity") {
@@ -1143,16 +1153,19 @@ summ.svyglm <- function(
     mss <- if (df.int == 1L) {
       m <- sum(w * f/sum(w))
       sum(w * (f - m)^2)
-    } else sum(w * f^2)
+    } else {
+      sum(w * f^2)
+    }
     rss <- sum(w * r^2)
     r <- sqrt(w) * r
     ## Final calculations
-    rsq <- mss/(mss + rss)
-    arsq <- 1 - (1 - rsq) * ((n - df.int)/model$df.residual)
+    rsq <- mss / (mss + rss)
+    sumnull <- summary(update(model, . ~ 1, design = model$survey.design))
+    arsq <- 1 - (the_sum$dispersion / (the_sum$df.residual)) / (sumnull$dispersion /
+                  (sumnull$df.residual))
     j <- structure(j, rsq = rsq, arsq = arsq)
 
   } else { # If not linear, calculate pseudo-rsq
-
     ## Have to specify pR2 here to avoid namespace issues
     svypR2 <- function(object) {
 
@@ -1213,12 +1226,12 @@ summ.svyglm <- function(
   }
 
   # Standard errors and t-statistics
-  ses <- coef(sum)[,2]
-  ts <- coef(sum)[,3]
-  ps <- coef(sum)[,4]
+  ses <- coef(the_sum)[,2]
+  ts <- coef(the_sum)[,3]
+  ps <- coef(the_sum)[,4]
 
   # Need proper name for test statistic
-  tcol <- colnames(coef(sum))[3]
+  tcol <- colnames(coef(the_sum))[3]
   tcol <- gsub("value", "val.", tcol)
 
   params[c("S.E.", tcol, "p")] <- list(ses, ts, ps)
@@ -1262,7 +1275,7 @@ summ.svyglm <- function(
   mat <- create_table(params = params, which.cols = which.cols, ivs = ivs)
 
   # Extract dispersion parameter
-  dispersion <- sum$dispersion
+  dispersion <- the_sum$dispersion
 
   j <- structure(j, dv = names(model$model[1]),
                  npreds = model$rank-df.int,
@@ -1271,7 +1284,7 @@ summ.svyglm <- function(
                  test.stat = tcol,
                  standardize.response = transform.response,
                  exp = exp,
-                 scale.response = transform.response)
+                 scale.response = transform.response, scale.only = scale.only)
 
   j <- structure(j, lmFamily = model$family)
 
@@ -1342,7 +1355,8 @@ print.summ.svyglm <- function(x, ...) {
   }
 
   # Notifying user if variables altered from original fit
-  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd,
+                        x$scale.only)
   if (!is.null(ss)) {cat("\n", ss, "\n", sep = "")}
 
 }
@@ -1357,7 +1371,7 @@ print.summ.svyglm <- function(x, ...) {
 
 knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 
-  if (!nzchar(system.file(package = "kableExtra")) | 
+  if (!nzchar(system.file(package = "kableExtra")) || 
       getOption("summ-normal-print", FALSE)) {
     return(knitr::normal_print(x))
   }
@@ -1407,7 +1421,7 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
     mod_meta <- NULL
   }
 
-  if (x$model.fit == T) {
+  if (x$model.fit == TRUE) {
 
     if (type != "Survey-weighted linear regression") {
       stats <- data.frame(stat = c("Pseudo-R\u00B2 (Cragg-Uhler)",
@@ -1429,7 +1443,8 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
   } else {stats <- NULL}
 
   # Notifying user if variables altered from original fit
-  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd,
+                        x$scale.only)
   ss <- if (!is.null(ss)) {paste(";", ss)} else {ss}
   cap <- paste0("Standard errors: Robust", ss)
 
@@ -1585,7 +1600,7 @@ knit_print.summ.svyglm <- function(x, options = NULL, ...) {
 #'  A tweaked version of `piecewiseSEM::rsquared()` is used to
 #'  generate the pseudo-R-squared estimates for linear models.
 #'
-#' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' @author Jacob Long \email{jacob.long@@sc.edu}
 #'
 #' @family summ
 #' 
@@ -1648,7 +1663,8 @@ summ.merMod <- function(
   conf.method = getOption("summ-conf.method", c("Wald", "profile", "boot")),
   digits = getOption("jtools-digits", default = 2), r.squared = TRUE,
   pvals = getOption("summ-pvals", NULL), n.sd = 1, center = FALSE,
-  transform.response = FALSE, data = NULL, exp = FALSE, t.df = NULL,
+  transform.response = FALSE, scale.only = FALSE, 
+  data = NULL, exp = FALSE, t.df = NULL,
   model.info = getOption("summ-model.info", TRUE),
   model.fit = getOption("summ-model.fit", TRUE),
   re.variance = getOption("summ-re.variance", c("sd", "var")),
@@ -1692,7 +1708,7 @@ summ.merMod <- function(
   satt <- FALSE
   if (is.null(pvals)) {
     if (is.null(t.df)) {
-      if (requireNamespace("lmerTest", quietly = TRUE) |
+      if (requireNamespace("lmerTest", quietly = TRUE) ||
           requireNamespace("pbkrtest", quietly = TRUE)) {
         pvals <- TRUE
       } else {
@@ -1725,7 +1741,7 @@ summ.merMod <- function(
           stop_wrap("You have requested Kenward-Roger p values but you do
                     not have the pbkrtest package installed.")
         }
-      } else if (is.numeric(t.df) | t.df %in% c("resid", "residual")) {
+      } else if (is.numeric(t.df) || t.df %in% c("resid", "residual")) {
         manual_df <- TRUE
       } else {
         stop_wrap("t.df argument not understood.")
@@ -1735,26 +1751,18 @@ summ.merMod <- function(
   }
 
   if (lme4::isGLMM(model)) {
-
     if (is.null(pvals)) {
-
       pvals <- TRUE
-
     }
-
   }
 
   # Standardized betas
   if (scale == TRUE) {
-
     model <- scale_mod(model, n.sd = n.sd, scale.response = transform.response,
-                       data = data, ...)
-
+                       data = data, center = !scale.only, ...)
   } else if (center == TRUE && scale == FALSE) {
-
     model <- center_mod(model, center.response = transform.response,
                         data = data, ...)
-
   }
 
   j <- structure(j, standardize = scale, digits = digits,
@@ -1764,7 +1772,7 @@ summ.merMod <- function(
                  scale = scale, transform.response = transform.response)
 
   # Using information from summary()
-  sum <- summary(model)
+  the_sum <- summary(model)
 
   # Intercept?
   if (length(terms(model)) != attr(terms(model), "intercept")) {
@@ -1780,50 +1788,45 @@ summ.merMod <- function(
   # Model fit
   failed.rsq <- FALSE
   if (r.squared == TRUE) {
-
     t0 <- Sys.time() # Calculating time elapsed
     tryo <- try({rsqs <- suppressWarnings(pR2_merMod(model))}, silent = TRUE)
     t1 <- Sys.time()
 
-    if (class(tryo) == "try-error") {
-
+    if (inherits(tryo, "try-error")) {
       rsqs <- NA
       failed.rsq <- TRUE
       r.squared <- FALSE
-      warning("Could not calculate r-squared. Try removing missing data\n",
-              "before fitting the model.\n")
-
+      warn_wrap("Could not calculate r-squared. Try removing missing data
+                 before fitting the model.")
     }
 
-    if (failed.rsq == FALSE & (t1 - t0) > 5 &
+    if (failed.rsq == FALSE && (t1 - t0) > 5 &&
         !getOption("pr2_warned", FALSE)) {
 
-      message("If summ is taking too long to run, try setting ",
-              "r.squared = FALSE.")
+      msg_wrap("If summ is taking too long to run, try setting 
+                r.squared = FALSE.")
       options("pr2_warned" = TRUE)
 
     }
   } else {
-
     rsqs <- NA
-
   }
 
   # AIC for GLMs
   j <- structure(j, aic = AIC(model), bic = BIC(model), rsqs = rsqs)
 
   # List of names of predictors
-  ivs <- rownames(sum$coefficients)
+  ivs <- rownames(the_sum$coefficients)
 
   # Unstandardized betas
-  coefs <- unname(sum$coefficients[,1])
+  coefs <- unname(the_sum$coefficients[,1])
   params <- list("Est." = coefs)
 
   # Standard errors and t-statistics
-  ses <- sum$coefficients[,2]
-  ts <- sum$coefficients[,3]
+  ses <- the_sum$coefficients[,2]
+  ts <- the_sum$coefficients[,3]
   # Need proper name for test statistic
-  tcol <- colnames(sum$coefficients)[which(colnames(sum$coefficients) %in%
+  tcol <- colnames(the_sum$coefficients)[which(colnames(the_sum$coefficients) %in%
                                              c("t value", "z value"))]
   tcol <- gsub("value", "val.", tcol)
 
@@ -1832,7 +1835,7 @@ summ.merMod <- function(
 
   # lmerMod doesn't have p values, so
   if (!lme4::isLMM(model)) {
-    ps <- sum$coefficients[,4]
+    ps <- the_sum$coefficients[,4]
     params[["p"]] <- ps
   } else {
     if (satt == TRUE) {
@@ -1854,7 +1857,7 @@ summ.merMod <- function(
       ts <- coefs[!is.na(coefs)] / ses
       dfs <- get_df_kr(model)
       params[["d.f."]] <- dfs
-      ps <- pt(abs(ts), lower.tail = F, dfs) * 2
+      ps <- pt(abs(ts), lower.tail = FALSE, dfs) * 2
       t1 <- Sys.time()
 
       if ((t1 - t0) > 10 & !getOption("pbkr_warned", FALSE)) {
@@ -1876,7 +1879,7 @@ summ.merMod <- function(
         p_calc <- "residual"
       }
 
-      ps <- pt(abs(ts), lower.tail = F, df) * 2
+      ps <- pt(abs(ts), lower.tail = FALSE, df) * 2
 
 
     }
@@ -1887,20 +1890,15 @@ summ.merMod <- function(
 
   params[c("Est.", "S.E.", tcol)] <- list(coefs, ses, ts)
 
-  if (confint == TRUE | exp == TRUE) {
-
-    alpha <- (1 - ci.width) / 2
+  if (confint == TRUE || exp == TRUE) {
     labs <- make_ci_labs(ci.width)
-
   }
 
   # Report odds ratios instead, with conf. intervals
   if (exp == TRUE) {
-  # TODO: revisit after lme4 bug fixed
-    the_cis <-
-      suppressWarnings(confint(model, parm = "beta_", method = conf.method[1],
-                       level = ci.width))
-    the_cis <- the_cis[rownames(sum$coefficients),]
+    the_cis <- confint(model, parm = "beta_", method = conf.method[1],
+                       level = ci.width)
+    the_cis <- the_cis[rownames(the_sum$coefficients),]
     ecoefs <- exp(coefs)
     lci <- exp(the_cis[,1])
     uci <- exp(the_cis[,2])
@@ -1908,19 +1906,15 @@ summ.merMod <- function(
     names(cis) <- labs
     params[["exp(Est.)"]] <- ecoefs
     params[names(cis)] <- cis
-
-  } else if (exp == FALSE & confint == TRUE) {
-
-    the_cis <-
-      suppressWarnings(confint(model, parm = "beta_", method = conf.method[1],
-                       level = ci.width))
-    the_cis <- the_cis[rownames(sum$coefficients),]
+  } else if (exp == FALSE && confint == TRUE) {
+    the_cis <- confint(model, parm = "beta_", method = conf.method[1],
+                       level = ci.width)
+    the_cis <- the_cis[rownames(the_sum$coefficients),]
     lci <- the_cis[,1]
     uci <- the_cis[,2]
     cis <- list(lci, uci)
     names(cis) <- labs
     params[names(cis)] <- cis
-
   }
 
   # Put things together
@@ -1933,9 +1927,9 @@ summ.merMod <- function(
 
   # Dealing with random effects
   ## Names of grouping vars
-  groups <- names(sum$ngrps)
+  groups <- names(the_sum$ngrps)
   ## Number of groups
-  ngroups <- sum$ngrps
+  ngroups <- the_sum$ngrps
   ## Calculate ICCs w/ internal function from sjstats
   iccs <- icc(model)
 
@@ -1951,7 +1945,8 @@ summ.merMod <- function(
                  failed.rsq = failed.rsq, test.stat = tcol,
                  standardize.response = transform.response,
                  exp = exp, scale.response = transform.response,
-                 re.table = re.table, groups.table = groups.table)
+                 re.table = re.table, groups.table = groups.table, 
+                 scale.only = scale.only)
 
   j <- structure(j, lmFamily = family(model))
 
@@ -2066,7 +2061,8 @@ print.summ.merMod <- function(x, ...) {
   }
 
   # Notifying user if variables altered from original fit
-  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd,
+                        x$scale.only)
   if (!is.null(ss)) {cat("\n", ss, "\n", sep = "")}
 
 }
@@ -2081,7 +2077,7 @@ print.summ.merMod <- function(x, ...) {
 
 knit_print.summ.merMod <- function(x, options = NULL, ...) {
 
-  if (!nzchar(system.file(package = "kableExtra")) | 
+  if (!nzchar(system.file(package = "kableExtra")) || 
       getOption("summ-normal-print", FALSE)) {
     return(knitr::normal_print(x))
   }
@@ -2155,7 +2151,7 @@ knit_print.summ.merMod <- function(x, options = NULL, ...) {
   cap <- NULL
 
   # Handling p-value explanation
-  if (x$pvals == TRUE & lme4::isLMM(j$model)) {
+  if (x$pvals == TRUE && lme4::isLMM(j$model)) {
 
     if (x$p_calc == "residual") {
 
@@ -2190,7 +2186,8 @@ knit_print.summ.merMod <- function(x, options = NULL, ...) {
   }
 
   # Notifying user if variables altered from original fit
-  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd)
+  ss <- scale_statement(x$scale, x$center, x$transform.response, x$n.sd,
+                        x$scale.only)
   ss <- if (!is.null(ss)) {paste0("; ", ss)} else {ss}
   cap <- paste(cap, ss)
 

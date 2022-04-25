@@ -1,20 +1,20 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# jtools
+# jtools <img src="man/figures/logo.png" alt="" height="250px" align="right" />
 
-[![CRAN\_Status\_Badge](https://www.r-pkg.org/badges/version/jtools)](https://cran.r-project.org/package=jtools)
+[![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/jtools)](https://cran.r-project.org/package=jtools)
 [![Total
 Downloads](https://cranlogs.r-pkg.org/badges/grand-total/jtools)](https://cran.r-project.org/package=jtools)
 [![CII Best
 Practices](https://bestpractices.coreinfrastructure.org/projects/2527/badge)](https://bestpractices.coreinfrastructure.org/projects/2527)
-[![Build
-Status](https://travis-ci.org/jacob-long/jtools.svg?branch=master)](https://travis-ci.org/jacob-long/jtools)
+[![R-CMD-check](https://github.com/jacob-long/jtools/workflows/R-CMD-check/badge.svg)](https://github.com/jacob-long/jtools/actions)
 [![AppVeyor Build
 Status](https://ci.appveyor.com/api/projects/status/github/jacob-long/JTools?branch=master&svg=true)](https://ci.appveyor.com/project/jacob-long/JTools)
-[![codecov](https://codecov.io/gh/jacob-long/jtools/branch/master/graph/badge.svg)](https://codecov.io/gh/jacob-long/jtools)
-<!-- [![GitHub tag](https://img.shields.io/github/tag/jacob-long/jtools.svg?label=Github)](https://github.com/jacob-long/jtools) -->
-<!-- [![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://opensource.org/licenses/MIT) -->
+[![codecov](https://codecov.io/gh/jacob-long/jtools/branch/master/graph/badge.svg)](https://app.codecov.io/gh/jacob-long/jtools)
+[![License: GPL
+v3](https://img.shields.io/badge/License-GPLv3-brightgreen.svg)](https://www.gnu.org/licenses/gpl-3.0)
+<!-- [![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) -->
 
 This package consists of a series of functions created by the author
 (Jacob) to automate otherwise tedious research tasks. At this juncture,
@@ -51,11 +51,10 @@ Then install the package from Github.
 devtools::install_github("jacob-long/jtools")
 ```
 
-You should also check out the
-[`dev`](https://github.com/jacob-long/jtools/tree/dev) branch of this
-repository for the latest and greatest changes, but also the latest and
-greatest bugs. To see what features are on the roadmap, check the issues
-section of the repository, especially the “enhancement” tag.
+To see what features are on the roadmap, check the issues section of the
+repository, especially the “enhancement” tag. Closed issues may be of
+interest, too, since they may be fixed in the Github version but not yet
+submitted to CRAN.
 
 ## Usage
 
@@ -107,8 +106,7 @@ You can also get variance inflation factors (VIFs) and
 partial/semipartial (AKA part) correlations. Partial correlations are
 only available for OLS models. You may also substitute confidence
 intervals in place of standard errors and you can choose whether to show
-p
-values.
+p values.
 
 ``` r
 summ(fit, scale = TRUE, vifs = TRUE, part.corr = TRUE, confint = TRUE, pvals = FALSE)
@@ -164,8 +162,7 @@ summ(fit2, robust = "HC3", cluster = "firm")
 
 Of course, `summ()` like `summary()` is best-suited for interactive use.
 When it comes to sharing results with others, you want sharper output
-and probably graphics. `jtools` has some options for that,
-too.
+and probably graphics. `jtools` has some options for that, too.
 
 ### LaTeX-, Word-, and RMarkdown-friendly regression summary tables (`export_summs()`)
 
@@ -184,344 +181,166 @@ coef_names <- c("Budget" = "log(budget)", "US Gross" = "log(us_gross)",
 export_summs(fit, fit_b, fit_c, robust = "HC3", coefs = coef_names)
 ```
 
-    #> Registered S3 methods overwritten by 'broom':
-    #>   method            from  
-    #>   tidy.glht         jtools
-    #>   tidy.summary.glht jtools
-
 <table class="huxtable" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-6">
-
 <col>
-
 <col>
-
 <col>
-
 <col>
-
 <tr>
-
 <th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 </th>
-
 <th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-Model
-1
-
+Model 1
 </th>
-
 <th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-Model
-2
-
+Model 2
 </th>
-
 <th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-Model
-3
-
+Model 3
 </th>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 Budget
-
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-\-2.43
-\*\*\*
-
+-2.43 \*\*\*
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-\-5.16
-\*\*\*
-
+-5.16 \*\*\*
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-\-6.70
-\*\*\*
-
+-6.70 \*\*\*
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (0.44)   
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (0.62)   
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (0.67)   
-
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-US
-Gross
-
+US Gross
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
        
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-3.96
-\*\*\*
-
+3.96 \*\*\*
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-3.85
-\*\*\*
-
+3.85 \*\*\*
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
        
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (0.51)   
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (0.48)   
-
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-Runtime
-(Hours)
-
+Runtime (Hours)
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
        
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
        
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-14.29
-\*\*\*
-
+14.29 \*\*\*
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
        
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
        
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (1.63)   
-
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 Constant
-
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-105.29
-\*\*\*
-
+105.29 \*\*\*
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-81.84
-\*\*\*
-
+81.84 \*\*\*
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
-83.35
-\*\*\*
-
+83.35 \*\*\*
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (7.65)   
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (8.66)   
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 (8.82)   
-
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 N
-
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 831       
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 831       
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0.4pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 831       
-
 </td>
-
 </tr>
-
 <tr>
-
 <th style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.8pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 R2
-
 </th>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.8pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 0.03    
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.8pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 0.09    
-
 </td>
-
 <td style="vertical-align: top; text-align: right; white-space: normal; border-style: solid solid solid solid; border-width: 0pt 0pt 0.8pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 0.17    
-
 </td>
-
 </tr>
-
 <tr>
-
 <th colspan="4" style="vertical-align: top; text-align: left; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">
-
 Standard errors are heteroskedasticity robust. \*\*\* p \< 0.001; \*\* p
 \< 0.01; \* p \< 0.05.
-
 </th>
-
 </tr>
-
 </table>
 
 In RMarkdown documents, using `export_summs()` and the chunk option
@@ -548,8 +367,7 @@ And since you get a `ggplot` object in return, you can tweak and theme
 as you wish.
 
 Another way to visualize the uncertainty of your coefficients is via the
-`plot.distributions`
-argument.
+`plot.distributions` argument.
 
 ``` r
 plot_summs(fit_c, robust = "HC3", coefs = coef_names, plot.distributions = TRUE)
@@ -569,16 +387,14 @@ models that have support from the `broom` package but not for `summ()`.
 Sometimes the best way to understand your model is to look at the
 predictions it generates. Rather than look at coefficients,
 `effect_plot()` lets you plot predictions across values of a predictor
-variable alongside the observed
-    data.
+variable alongside the observed data.
 
 ``` r
 effect_plot(fit_c, pred = runtime, interval = TRUE, plot.points = TRUE)
 ```
 
-    #> Using data movies from global environment. This could cause incorrect
-    #> results if movies has been altered since the model was fit. You can
-    #> manually provide the data to the "data =" argument.
+    #> Using data movies from global environment. This could cause incorrect results if movies has been altered since the model was fit.
+    #> You can manually provide the data to the "data =" argument.
 
     #> Warning: Removed 10 rows containing missing values (geom_point).
 
@@ -586,16 +402,14 @@ effect_plot(fit_c, pred = runtime, interval = TRUE, plot.points = TRUE)
 
 And a new feature in version `2.0.0` lets you plot *partial residuals*
 instead of the raw observed data, allowing you to assess model quality
-after accounting for effects of control
-variables.
+after accounting for effects of control variables.
 
 ``` r
 effect_plot(fit_c, pred = runtime, interval = TRUE, partial.residuals = TRUE)
 ```
 
-    #> Using data movies from global environment. This could cause incorrect
-    #> results if movies has been altered since the model was fit. You can
-    #> manually provide the data to the "data =" argument.
+    #> Using data movies from global environment. This could cause incorrect results if movies has been altered since the model was fit.
+    #> You can manually provide the data to the "data =" argument.
 
 ![](man/figures/unnamed-chunk-10-1.png)<!-- -->
 
@@ -606,19 +420,19 @@ much more are supported.
 
 There are several other things that might interest you.
 
-  - `gscale()`: Scale and/or mean-center data, including `svydesign`
+-   `gscale()`: Scale and/or mean-center data, including `svydesign`
     objects
-  - `scale_mod()` and `center_mod()`: Re-fit models with scaled and/or
+-   `scale_mod()` and `center_mod()`: Re-fit models with scaled and/or
     mean-centered data
-  - `wgttest()` and `pf_sv_test()`, which are combined in
+-   `wgttest()` and `pf_sv_test()`, which are combined in
     `weights_tests()`: Test the ignorability of sample weights in
     regression models
-  - `svycor()`: Generate correlation matrices from `svydesign` objects
-  - `theme_apa()`: A mostly APA-compliant `ggplot2` theme
-  - `theme_nice()`: A nice `ggplot2` theme
-  - `add_gridlines()` and `drop_gridlines()`: `ggplot2` theme-changing
+-   `svycor()`: Generate correlation matrices from `svydesign` objects
+-   `theme_apa()`: A mostly APA-compliant `ggplot2` theme
+-   `theme_nice()`: A nice `ggplot2` theme
+-   `add_gridlines()` and `drop_gridlines()`: `ggplot2` theme-changing
     convenience functions
-  - `make_predictions()`: an easy way to generate hypothetical predicted
+-   `make_predictions()`: an easy way to generate hypothetical predicted
     data from your regression model for plotting or other purposes.
 
 Details on the arguments can be accessed via the R documentation
@@ -640,5 +454,6 @@ By participating in this project you agree to abide by its terms.
 
 ## License
 
-The source code of this package is licensed under the [MIT
-License](https://opensource.org/licenses/mit-license.php).
+This package is licensed under the [GPLv3
+license](https://spdx.org/licenses/GPL-3.0-or-later.html) or any later
+version.

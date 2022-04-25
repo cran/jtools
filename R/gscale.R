@@ -24,7 +24,7 @@
 #'   mean and divides by 2 sd.
 #'
 #' @param binary.factors Coerce two-level factors to numeric and apply scaling
-#'   functions to them? Default is TRUE.
+#'   functions to them? Default is FALSE.
 #'
 #' @param n.sd By how many standard deviations should the variables be divided
 #'   by? Default for `gscale` is 2, like \code{arm}'s \code{rescale}.
@@ -70,8 +70,8 @@
 #'
 #' For those dealing with survey data, if you provide a \code{survey.design}
 #' object you can rest assured that the mean-centering and scaling is performed
-#' with help from the [`svymean()`][survey::surveysummary] and
-#' [`svyvar()`][survey::surveysummary] functions, respectively. It was among the
+#' with help from the [`svymean()`][survey::svymean] and
+#' [`svyvar()`][survey::svyvar] functions, respectively. It was among the
 #' primary motivations for creating this function. \code{gscale()} will not
 #' center or scale the weights variables defined in the survey design unless
 #' the user specifically requests them in the \code{x =} argument.
@@ -84,7 +84,7 @@
 #' regression models. On request, it will center and/or standardize variables
 #' before printing its output.
 #'
-#' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' @author Jacob Long \email{jacob.long@@sc.edu}
 #'
 #' @references
 #'
@@ -155,7 +155,7 @@
 
 
 gscale <- function(data = NULL, vars = NULL, binary.inputs = "center",
-                   binary.factors = TRUE, n.sd = 2,
+                   binary.factors = FALSE, n.sd = 2,
                    center.only = FALSE, scale.only = FALSE, weights = NULL,
                    apply.weighted.contrasts =
                      getOption("jtools-weighted.contrasts", FALSE),
@@ -199,7 +199,7 @@ gscale <- function(data = NULL, vars = NULL, binary.inputs = "center",
   }
 
   # Deal with weights
-  if (!is.null(weights) & (is.data.frame(data) | survey == TRUE)) {
+  if (!is.null(weights) && (is.data.frame(data) || survey == TRUE)) {
     # If it's the weight column, skip
     wname <- as.character(substitute(weights))
     wname2 <- weights
@@ -402,7 +402,7 @@ scaler <- function(x, binary.inputs, n.sd = 2, center.only = FALSE,
 #' @export
 
 standardize <- function(data = NULL, vars = NULL, binary.inputs = "center",
-                        binary.factors = TRUE, weights = NULL) {
+                        binary.factors = FALSE, weights = NULL) {
 
   gscale(data = data, vars = vars, binary.inputs = binary.inputs,
          binary.factors = binary.factors, n.sd = 1,
@@ -430,7 +430,7 @@ standardize <- function(data = NULL, vars = NULL, binary.inputs = "center",
 #' @export
 
 center <- function(data = NULL, vars = NULL, binary.inputs = "center",
-                        binary.factors = TRUE, weights = NULL) {
+                        binary.factors = FALSE, weights = NULL) {
 
   gscale(data = data, vars = vars, binary.inputs = binary.inputs,
          binary.factors = binary.factors, n.sd = 1,

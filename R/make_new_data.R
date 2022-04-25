@@ -55,7 +55,7 @@ make_new_data <- function(model, pred, pred.values = NULL, at = NULL,
                           num.preds = 100, ...) {
   design <- if ("svyglm" %in% class(model)) model$survey.design else NULL
   
-  if (is.null(data) | "svyglm" %in% class(model)) {
+  if (is.null(data) || "svyglm" %in% class(model)) {
     data <- get_data(model)
   }
   
@@ -122,6 +122,7 @@ make_new_data <- function(model, pred, pred.values = NULL, at = NULL,
 }
 
 #' @rdname model_utils
+#' @family model_utils
 #' @export 
 get_offset_name <- function(model) {
   
@@ -153,6 +154,7 @@ get_offset_name <- function(model) {
 }
 
 #' @rdname model_utils
+#' @family model_utils
 #' @export 
 get_weights <- function(model, data) {
   
@@ -162,20 +164,20 @@ get_weights <- function(model, data) {
     return(list(weights_name = wname, weights = weights))
   }
   
-  if (("(weights)" %in% names(data) | !is.null(getCall(model)$weights))) {
+  if (("(weights)" %in% names(data) || !is.null(getCall(model)$weights))) {
     weights <- TRUE
     # subset gives bare name
     wname <- as.character(deparse(getCall(model)$weights))
     # Sometimes it's character(0)
-    if (length(wname) == 0 | wname == "NULL") {
+    if (length(wname) == 0 || wname == "NULL") {
       wname <- NULL
     } else {
       wname <- all.vars(as.formula(paste("~", wname)))
     }
     
-    if ("(weights)" %in% colnames(data) & !is.null(wname)) {
+    if ("(weights)" %in% colnames(data) && !is.null(wname)) {
       colnames(data)[which(colnames(data) == "(weights)")] <- wname
-    } else if ("(weights)" %in% colnames(data) & is.null(wname)) {
+    } else if ("(weights)" %in% colnames(data) && is.null(wname)) {
       wname <- "(weights)"
     } 
     
@@ -211,12 +213,13 @@ get_weights <- function(model, data) {
 #' @return 
 #' 
 #' * `get_data()`: The data used to fit the model.
-#' * `get_response()`: The name of the response variable.
+#' * `get_response_name()`: The name of the response variable.
 #' * `get_offset_name()`: The name of the offset variable.
 #' * `get_weights()`: A list with `weights_name`, the name of the weighting
 #'  variable, and `weights`, the weights themselves (or all 1 when there are
 #'  no weights).
 #' @rdname model_utils
+#' @family model_utils
 #' @export 
 
 get_data <- function(model, formula = NULL, warn = TRUE, ...) {
@@ -303,6 +306,7 @@ get_data <- function(model, formula = NULL, warn = TRUE, ...) {
 
 # adapted from https://stackoverflow.com/a/13217607/5050156
 #' @rdname model_utils
+#' @family model_utils
 #' @export 
 get_response_name <- function(model, ...) {
   formula <- get_formula(model, ...)
@@ -314,7 +318,7 @@ get_response_name <- function(model, ...) {
 
 #' @title Retrieve formulas from model objects
 #' 
-#' This function is primarily an internal helper function in `jtools` and
+#' @description This function is primarily an internal helper function in `jtools` and
 #' related packages to standardize the different types of formula objects used
 #' by different types of models.
 #' 
@@ -330,7 +334,7 @@ get_response_name <- function(model, ...) {
 #'   default.
 #' @param ... Ignored.
 #' 
-#' @value A `formula` object.
+#' @return A `formula` object.
 #' @examples 
 #' 
 #' data(mtcars)
@@ -355,7 +359,7 @@ get_formula.brmsfit <- function(model, resp = NULL, dpar = NULL, ...) {
   form <- formula(model)
   if ("mvbrmsformula" %in% class(form)) {
     form <- as.list(form)[["forms"]]
-    if (is.null(resp) & is.null(dpar)) {
+    if (is.null(resp) && is.null(dpar)) {
       return(as.formula(form[[1]]))
     } else if (!is.null(resp)) {
       resps <- lapply(form, function(x) {
@@ -370,7 +374,7 @@ get_formula.brmsfit <- function(model, resp = NULL, dpar = NULL, ...) {
       form <- form[[1]]
     }
   } else {
-    if (is.null(resp) & is.null(dpar)) return(as.formula(form))
+    if (is.null(resp) && is.null(dpar)) return(as.formula(form))
   }
   
   if (!is.null(dpar)) {
@@ -380,6 +384,14 @@ get_formula.brmsfit <- function(model, resp = NULL, dpar = NULL, ...) {
   } else {
     return(as.formula(form))
   }
+}
+
+#' @rdname get_formula
+#' @export
+get_formula.panelmodel <- function(model, ...) {
+  f <- formula(model)
+  class(f) <- class(f) %not% "Formula"
+  f
 }
 
 get_family <- function(model, ...) {
@@ -412,6 +424,11 @@ get_family.brmsfit <- function(model, resp = NULL, ...) {
   }
 }
 
+#' @importFrom stats gaussian
+get_family.plm <- function(model, ...) {
+  gaussian(link = "identity")
+}
+
 # formerly built into make_new_data, but I want to use it for other times
 # when I just want the values of non-focal predictors
 get_control_values <- function(model, data, preds, at, center, design = NULL,
@@ -428,11 +445,12 @@ get_control_values <- function(model, data, preds, at, center, design = NULL,
   controls <- controls %just% all.vars(formula)
   if (length(controls) > 0) {
     
-    if (center[1] == TRUE | (length(center) == 1 & center == "all" &
+    if (center[1] == TRUE || (length(center) == 1 && center == "all" &&
                              "all" %nin% names(controls))) {
       center <- names(controls)
-    } else if (center[1] == FALSE | (length(center) == 1 & center == "none" &
-                                     "none" %nin% names(controls))) {
+    } else if (center[1] == FALSE ||
+                (length(center) == 1 && center == "none" && 
+                "none" %nin% names(controls))) {
       center <- NULL
     }
     if (length(center) > 0) {
@@ -539,3 +557,17 @@ zero_or_base <- function(x) {
     FALSE
   }
 }
+
+check_two_col <- function(model) {
+  r <- attr(terms(get_formula(model)),"dataClasses")[1] %in% c("nmatrix.2")
+  r <- if (length(r) == 0) {
+    attr(attr(model.frame(model), "terms"),"dataClasses")[1] %in% c("nmatrix.2")
+    } else {FALSE}
+  if (length(r) == 0) {return(FALSE)} else {return(r)} 
+}
+
+get_two_col <- function(model) {
+  all.vars(terms(formula(paste("~", get_response_name(model)))))
+}
+
+

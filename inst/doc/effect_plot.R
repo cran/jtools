@@ -3,7 +3,7 @@ required <- c("MASS")
 if (!all(sapply(required, requireNamespace, quietly = TRUE)))
   knitr::opts_chunk$set(eval = FALSE)
 knitr::opts_chunk$set(message = F, warning = F, fig.width = 6, fig.height = 4,
-                      dpi = 100, render = knitr::normal_print)
+                      dpi = 125, render = knitr::normal_print)
 library(jtools)
 
 ## -----------------------------------------------------------------------------
@@ -41,10 +41,6 @@ summ(l_mod)
 effect_plot(l_mod, pred = week, interval = TRUE, y.label = "% testing positive")
 
 ## -----------------------------------------------------------------------------
-pr_mod <- update(l_mod, family = binomial(link = "probit"))
-effect_plot(pr_mod, pred = week, interval = TRUE, y.label = "% testing positive")
-
-## -----------------------------------------------------------------------------
 library(MASS)
 data(Insurance)
 Insurance$age_n <- as.numeric(Insurance$Age)
@@ -63,7 +59,7 @@ effect_plot(p_mod, pred = age_n, interval = TRUE, partial.residuals = TRUE)
 
 ## -----------------------------------------------------------------------------
 effect_plot(p_mod, pred = age_n, interval = TRUE, partial.residuals = TRUE,
-            jitter = c(0.1,0))
+            jitter = c(0.1, 0))
 
 ## -----------------------------------------------------------------------------
 effect_plot(fit, pred = fl, interval = TRUE)

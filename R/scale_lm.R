@@ -53,7 +53,7 @@ scale_lm <- scale_mod
 #' @param vars A character vector of variable names that you want to be
 #'   scaled. If NULL, the default, it is all predictors.
 #'
-#' @param ... Ignored.
+#' @param ... Arguments passed on to [gscale()].
 #'
 #' @inheritParams gscale
 #'
@@ -73,7 +73,7 @@ scale_lm <- scale_mod
 #' @return The functions returns a re-fitted model object, inheriting
 #'   from whichever class was supplied.
 #'
-#' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' @author Jacob Long \email{jacob.long@@sc.edu}
 #'
 #' @family standardization
 #'
@@ -126,8 +126,8 @@ scale_lm <- scale_mod
 #'
 
 scale_mod.default <- function(model, binary.inputs = "0/1", n.sd = 1,
-   center = TRUE, scale.response = FALSE, center.only = FALSE, data = NULL,
-   vars = NULL,
+   center = TRUE, scale.response = FALSE, center.only = FALSE, 
+   scale.only = FALSE, data = NULL, vars = NULL,
    apply.weighted.contrasts = getOption("jtools-weighted.contrasts", FALSE),
    ...) {
 
@@ -144,15 +144,9 @@ scale_mod.default <- function(model, binary.inputs = "0/1", n.sd = 1,
 
   # Detect presence of offset, save the vector
   if (!is.null(model.offset(mf))) {
-
-    offset <- TRUE
     the_offset <- model.offset(mf)
-
   } else {
-
-    offset <- FALSE
     the_offset <- NULL
-
   }
 
   # Save response variable
@@ -180,6 +174,11 @@ scale_mod.default <- function(model, binary.inputs = "0/1", n.sd = 1,
                            "(?=($|~|\\s|\\*|\\+))", sep = "")
     backtick_name <- paste("`", var, "`", sep = "")
     formc <- gsub(regex_pattern, backtick_name, formc, perl = T)
+    # Need a separate regex to escape the dependent variable
+    regex_pattern <- paste("^", escapeRegex(var),
+                           "(?=($|~|\\s|\\*|\\+))", sep = "")
+    backtick_name <- paste("`", var, "`", sep = "")
+    formc <- gsub(regex_pattern, backtick_name, formc, perl = T)
 
   }
 
@@ -187,15 +186,9 @@ scale_mod.default <- function(model, binary.inputs = "0/1", n.sd = 1,
   formc <- gsub("``", "`", formc, fixed = TRUE)
 
   if (!is.null(model.weights(mf))) {
-
-    weights <- TRUE
     the_weights <- model.weights(mf)
-
   } else {
-
-    weights <- FALSE
     the_weights <- NULL
-
   }
 
   if (!is.null(data)) {
@@ -226,7 +219,7 @@ scale_mod.default <- function(model, binary.inputs = "0/1", n.sd = 1,
   mf <- gscale(vars = all_vars, data = mf, binary.inputs = binary.inputs,
                n.sd = n.sd, scale.only = !center,
                center.only = center.only, weights = the_weights,
-               apply.weighted.contrasts = apply.weighted.contrasts)
+               apply.weighted.contrasts = apply.weighted.contrasts, ...)
 
   form <- as.formula(formc)
 
@@ -280,20 +273,6 @@ scale_mod.svyglm <- function(model, binary.inputs = "0/1", n.sd = 1,
 
   mf <- model.frame(model)
   form <- formula(model)
-  formc <- as.character(deparse(formula(model)))
-
-  # Detect presence of offset, save the vector
-  if (!is.null(model.offset(mf))) {
-
-    offset <- TRUE
-    the_offset <- model.offset(mf)
-
-  } else {
-
-    offset <- FALSE
-    the_offset <- NULL
-
-  }
 
   # Save response variable
   resp <- as.character(formula(model)[2])
@@ -305,26 +284,11 @@ scale_mod.svyglm <- function(model, binary.inputs = "0/1", n.sd = 1,
 
   # If offset supplied in the formula, detect it, delete it
   if (!is.null(attr(terms(form), "offset"))) {
-
     off_pos <- attr(terms(form), "offset") # Get index of offset in terms list
-    offname <- attr(terms(form), "variables")[off_pos] # Get its name in list
-    formc <- gsub(offname, "", formc)
-
+    offname <- rownames(attr(terms(form), "factors"))[off_pos] # Get its name in list
+  } else {
+    offname <- NULL
   }
-
-  # Now I'm quoting all the names so there's no choking on vars with functions
-  # applied. I save the backticked names
-  for (var in all_vars) {
-
-    regex_pattern <- paste("(?<=(~|\\s|\\*|\\+))", escapeRegex(var),
-                           "(?=($|~|\\s|\\*|\\+))", sep = "")
-    backtick_name <- paste("`", var, "`", sep = "")
-    formc <- gsub(regex_pattern, backtick_name, formc, perl = T)
-
-  }
-
-  formc <- paste0(formc, collapse = "")
-  formc <- gsub("``", "`", formc, fixed = TRUE)
 
   # Get the survey design object
   design <- model$survey.design
@@ -337,9 +301,7 @@ scale_mod.svyglm <- function(model, binary.inputs = "0/1", n.sd = 1,
   # (fixes issues with functions)
   adds <- which(all_vars %nin% names(design$variables))
   for (var in all_vars[adds]) {
-
     design$variables[[var]] <- mf[[var]]
-
   }
 
   # Complete cases only
@@ -349,15 +311,17 @@ scale_mod.svyglm <- function(model, binary.inputs = "0/1", n.sd = 1,
   if (scale.response == FALSE) {
     all_vars <- all_vars[all_vars %nin% resp]
   }
-
+  if (!is.null(offname)) {
+    all_vars <- all_vars %not% offname
+  }
+  # only scale a subset if requested
   if (!is.null(vars)) {
     all_vars <- all_vars[all_vars %in% vars]
   }
 
-
   # Call gscale()
   design <- gscale(vars = all_vars, data = design, n.sd = n.sd,
-                   scale.only = !center, center.only = center.only)
+                   scale.only = !center, center.only = center.only, ...)
 
   call$design <- quote(design)
 
@@ -405,7 +369,7 @@ scale_mod.svyglm <- function(model, binary.inputs = "0/1", n.sd = 1,
 #' @return The functions returns a \code{lm} or \code{glm} object, inheriting
 #'   from whichever class was supplied.
 #'
-#' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' @author Jacob Long \email{jacob.long@@sc.edu}
 #'
 #' @family standardization
 #'
@@ -453,12 +417,13 @@ scale_mod.svyglm <- function(model, binary.inputs = "0/1", n.sd = 1,
 
 center_mod <- center_lm <- function(model, binary.inputs = "0/1",
     center.response = FALSE, data = NULL,
-    apply.weighted.contrasts = getOption("jtools-weighted.contrasts", FALSE)) {
+    apply.weighted.contrasts = getOption("jtools-weighted.contrasts", FALSE), 
+    ...) {
 
   out <- scale_mod(model, binary.inputs = binary.inputs,
                   scale.response = center.response, center.only = TRUE,
                   data = data,
-                  apply.weighted.contrasts = apply.weighted.contrasts)
+                  apply.weighted.contrasts = apply.weighted.contrasts, ...)
 
   return(out)
 

@@ -23,6 +23,8 @@ pmod <- glm(counts ~ talent*money, offset = log(exposures), data = poisdat,
 pmod2 <- glm(counts ~ talent*money + offset(log(exposures)), data = poisdat,
             family = poisson)
 pmodw <- glm(counts ~ talent + money, data = poisdat, weights = wt)
+pmod2q <- glm(counts ~ talent*money + offset(log(exposures)), data = poisdat,
+            family = quasipoisson)
 
 if (requireNamespace("survey")) {
   # survey test
@@ -52,16 +54,16 @@ if (requireNamespace("lme4")) {
 
 options("summ-stars" = TRUE)
 
-test_that("standardize gives deprecated warning", {
-  expect_warning(summ(fit, standardize = TRUE))
-  expect_warning(summ(fitgf, standardize = TRUE))
-  if (requireNamespace("lme4")) {
-    expect_warning(summ(mv, standardize = TRUE))
-  }
-  if (requireNamespace("survey")) {
-    expect_warning(summ(regmodel, standardize = TRUE))
-  }
-})
+# test_that("standardize gives deprecated warning", {
+#   expect_warning(summ(fit, standardize = TRUE))
+#   expect_warning(summ(fitgf, standardize = TRUE))
+#   if (requireNamespace("lme4")) {
+#     expect_warning(summ(mv, standardize = TRUE))
+#   }
+#   if (requireNamespace("survey")) {
+#     expect_warning(summ(regmodel, standardize = TRUE))
+#   }
+# })
 
 test_that("jsumm: GLMs work", {
   expect_is(summ(fitgf), "summ.glm")
@@ -79,6 +81,12 @@ test_that("jsumm: GLMs w/ offsets work (formula)", {
   expect_is(summ(pmod2), "summ.glm")
   expect_is(summ(pmod2, scale = TRUE), "summ.glm")
   expect_is(summ(pmod2, center = TRUE), "summ.glm")
+})
+
+test_that("jsumm: quasipoisson works", {
+  expect_is(summ(pmod2q), "summ.glm")
+  expect_is(summ(pmod2q, scale = TRUE), "summ.glm")
+  expect_is(summ(pmod2q, center = TRUE), "summ.glm")
 })
 
 test_that("jsumm: GLMs w/ weights work", {
@@ -256,6 +264,7 @@ test_that("jsumm: lm cluster-robust SEs work", {
   expect_is(summ(fit, robust = "HC3", cluster = "Population"), "summ.lm")
   expect_output(print(summ(fit, robust = "HC3", cluster = "Population")))
   expect_error(summ(fit, robust = "HC4m", cluster = "Population"))
+  expect_warning(summ(fit, cluster = "Population"))
 })
 
 test_that("jsumm: glm cluster-robust SEs work", {

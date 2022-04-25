@@ -136,7 +136,7 @@ get_robust_se <- function(model, type = "HC3", cluster = NULL,
     
   } else if (length(cluster) > 1) {
     
-    if (!is.factor(cluster) & !is.numeric(cluster)) {
+    if (!is.factor(cluster) && !is.numeric(cluster)) {
       
       warn_wrap("Invalid cluster input. Either use the name of the variable
                 in the input data frame or provide a numeric/factor vector.
@@ -145,22 +145,18 @@ get_robust_se <- function(model, type = "HC3", cluster = NULL,
       use_cluster <- FALSE
       
     } else {
-      
-      use_cluster <- TRUE
-      
+      use_cluster <- TRUE   
     }
     
   } else {
-    
     use_cluster <- FALSE
-    
   }
   
-  if (is.null(vcov) & type %in% c("HC4", "HC4m", "HC5") & is.null(cluster)) {
+  if (is.null(vcov) && type %in% c("HC4", "HC4m", "HC5") && is.null(cluster)) {
     # vcovCL only goes up to HC3
     coefs <- sandwich::vcovHC(model, type = type)
     
-  } else if (is.null(vcov) & type %in% c("HC4", "HC4m", "HC5") &
+  } else if (is.null(vcov) && type %in% c("HC4", "HC4m", "HC5") &&
              !is.null(cluster)) {
     
     stop_wrap("If using cluster-robust SEs, robust.type must be HC3 or lower.")
@@ -172,7 +168,7 @@ get_robust_se <- function(model, type = "HC3", cluster = NULL,
   } else {coefs <- vcov}
   
   vcov <- coefs
-  coefs <- coeftest(model, coefs)
+  coefs <- test_coefs(model, coefs)
   ses <- coefs[,2]
   ts <- coefs[,3]
   ps <- coefs[,4]
@@ -206,7 +202,6 @@ create_table <- function(params, which.cols, ivs) {
   }
   
   coefs <- params[["Est."]]
-  
   params <- params[unlist(which.cols)]
   
   mat <- matrix(nrow = length(ivs), ncol = length(which.cols))
@@ -298,11 +293,10 @@ part_corr <- function(ts, df.int, rsq, robust, n) {
   
 }
 
-## Checking for presence of deprecated
-
+## Checking for presence of deprecated arguments
 dep_checks <- function(dots) {
   
-  scale <-  transform.response <- robust <- odds.ratio <- NULL
+  scale <-  transform.response <- robust <- exp <- NULL
   
   if ("standardize" %in% names(dots)) {
     warn_wrap("The standardize argument is deprecated. Please use 'scale'
@@ -350,20 +344,25 @@ dep_checks <- function(dots) {
   }
   
   list(scale = scale, transform.response = transform.response, robust = robust,
-       exp = odds.ratio)
+       exp = exp)
   
 }
 
 ## Form the sentence that says what happened with variable transformations
 
-scale_statement <- function(scale, center, transform.response, n.sd) {
+scale_statement <- function(scale, center, transform.response, n.sd, 
+                            scale.only = FALSE) {
   part_1 <- "Continuous "
   part_2 <- ifelse(transform.response, "variables", "predictors")
-  part_3 <- " are mean-centered"
-  part_4 <- if (scale) { " and scaled by " } else { NULL }
+  part_3 <- if (!scale.only) {" are mean-centered"} else {NULL}
+  part_4 <- if (scale && !scale.only) { 
+    " and scaled by " 
+  } else if (scale) {
+    " are scaled by "
+  } else { NULL }
   part_5 <- if (scale) { paste(n.sd, "s.d") } else { NULL }
   
-  if (scale == FALSE & center == FALSE) {
+  if (scale == FALSE && center == FALSE) {
     return(NULL)
   } else {
     paste0(part_1, part_2, part_3, part_4, part_5, ".")
@@ -469,7 +468,7 @@ print_mod_fit <- function(stats) {
 
 print_se_info <- function(robust, use_cluster, manual = NULL, vcov = NULL, ...) {
   
-  if (identical(FALSE, robust) & is.null(vcov)) {
+  if (identical(FALSE, robust) && is.null(vcov)) {
     
     cat(italic("Standard errors:",  ifelse(is.null(manual),
                                            no = manual, yes = "MLE")),
@@ -501,7 +500,7 @@ print_se_info <- function(robust, use_cluster, manual = NULL, vcov = NULL, ...) 
 
 get_se_info <- function(robust, use_cluster, manual = NULL, vcov = NULL, ...) {
   
-  if (identical(FALSE, robust) & is.null(vcov)) {
+  if (identical(FALSE, robust) && is.null(vcov)) {
     
     ifelse(is.null(manual), no = manual, yes = "MLE")
     
@@ -546,7 +545,7 @@ format_percentiles <- function(probs, digits) {
          "%")
 }
 
-confint_linear <- function (object, parm, level = 0.95, cov = NULL,
+confint_linear <- function(object, parm, level = 0.95, cov = NULL,
                             df.residual = NULL, ...) {
   cf <- coef(object)
   pnames <- names(cf)
@@ -702,4 +701,3 @@ escape_stars <- function(t) {
   }
   return(t)
 }
-

@@ -84,7 +84,8 @@
 #'   for the plot. If \code{NULL}, no main title is used.
 #'
 #' @param colors See [jtools_colors] for details on the types of arguments
-#'    accepted. Default is "black". 
+#'    accepted. Default is "black". This affects the coloration of the line
+#'    as well as confidence intervals and points.
 #' 
 #' @param color.class Deprecated. Now known as `colors`.
 #'
@@ -165,8 +166,6 @@
 #' @param point.alpha What should the `alpha` aesthetic for plotted points of 
 #'  observed data be? Default is 0.6, and it can range from 0 (transparent) to 
 #'  1 (opaque).
-#' @param point.color What should the `colour` aesthetic for plotted points of 
-#'  observed data be? Default is "black".
 #' @param partial.residuals Instead of plotting the observed data, you may plot
 #'  the partial residuals (controlling for the effects of variables besides 
 #'  `pred`). 
@@ -198,7 +197,7 @@
 #'   like
 #'   a user-created plot and expanded upon as such.
 #'
-#' @author Jacob Long <\email{long.1377@@osu.edu}>
+#' @author Jacob Long \email{jacob.long@@sc.edu}
 #'
 #' @seealso `interact_plot` from the `interactions` package plots interaction
 #'   effects,
@@ -251,9 +250,8 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
   outcome.scale = "response", robust = FALSE, cluster = NULL, vcov = NULL, 
   set.offset = 1, x.label = NULL, y.label = NULL, pred.labels = NULL,
   main.title = NULL, colors = "black", line.thickness = 1.1, 
-  point.size = 1.5, point.alpha = 0.6, point.color = "black", jitter = 0,
-  rug = FALSE, rug.sides = "lb", 
-  force.cat = FALSE, cat.geom = c("point", "line", "bar"), 
+  point.size = 1.5, point.alpha = 0.6, jitter = 0, rug = FALSE, 
+  rug.sides = "lb", force.cat = FALSE, cat.geom = c("point", "line", "bar"), 
   cat.interval.geom = c("errorbar", "linerange"), cat.pred.point.size = 3.5, 
   partial.residuals = FALSE, color.class = colors, ...) {
   
@@ -261,19 +259,21 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
   pred <- quo_name(enexpr(pred))
   
   # Have a sensible interval default for categorical predictors
-  if ("interval" %nin% names(match.call())[-1] &
-      !(is.numeric(get_data(model, warn = FALSE)[[pred]]) &
+  if ("interval" %nin% names(match.call())[-1] &&
+      !(is.numeric(get_data(model, warn = FALSE)[[pred]]) &&
         force.cat == FALSE)) {
     interval <- TRUE
   }
   
-  if (force.cat == TRUE & is.null(pred.values)) {
+  if (force.cat == TRUE && is.null(pred.values)) {
     if (is.null(data)) {data <- get_data(model)}
     pred.values <- sort(unique(suppressMessages(data[[pred]])))
   }
   
   # Deal with legacy color argument
   if (!all(color.class == colors)) colors <- color.class
+
+  colors <- get_colors(colors)
   
   pred_out <- make_predictions(model, pred = pred, pred.values = pred.values,
                                at = at, center = centered,
@@ -284,20 +284,23 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
                                set.offset = set.offset, return.orig.data = TRUE,
                                partial.residuals = partial.residuals, 
                                data = data, ...)
-  
   # Putting these outputs into separate objects
   pm <- pred_out[[1]]
   d <- pred_out[[2]]
   
   # Check for clashing options "dpar" and "plot.points"
   dots <- list(...)
-  if (!is.null(dots$dpar) & plot.points == TRUE) {
+  if (!is.null(dots$dpar) && plot.points == TRUE) {
     plot.points <- FALSE
     warn_wrap("The plot.points argument is not compatible with distributional
               parameters specified in `dpar`.")
   }
+  if (!is.null(dots$point.color)) {
+    warn_wrap("The 'point.color' argument is deprecated and is now ignored. 
+               You can change the color of points with the 'colors' argument.")
+  }
   
-  if (is.numeric(d[[pred]]) & force.cat == FALSE) {
+  if (is.numeric(d[[pred]]) && force.cat == FALSE) {
     plot_effect_continuous(predictions = pm, pred = pred,
                            plot.points = plot.points | partial.residuals,
                            interval = interval,
@@ -309,7 +312,7 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
                            weights = get_weights(model, d)$weights_name,
                            rug = rug, rug.sides = rug.sides,
                            point.size = point.size, point.alpha = point.alpha,
-                           point.color = point.color)
+                           point.color = colors)
   } else {
     plot_cat(predictions = pm, pred = pred, data = d,  
              geom = cat.geom, pred.values = pred.values,
@@ -320,7 +323,7 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
              resp = get_response_name(model, ...), jitter = jitter, 
              interval.geom = cat.interval.geom, line.thickness = line.thickness,
              point.size = point.size, pred.point.size = cat.pred.point.size,
-             point.alpha = point.alpha, point.color = point.color)
+             point.alpha = point.alpha, point.color = colors)
   }
   
 }
@@ -380,7 +383,7 @@ plot_effect_continuous <-
   if (interval == TRUE) {
     p <- p + geom_ribbon(data = pm, 
                          aes(ymin = !! sym("ymin"),  ymax = !! sym("ymax")),
-                         alpha = 1/5, show.legend = FALSE)
+                         alpha = 1/5, show.legend = FALSE, fill = colors)
   }
   
   # Rug plot for marginal distributions
@@ -388,7 +391,7 @@ plot_effect_continuous <-
     p <- p + geom_rug(data = d,
                       mapping = aes(x = !! pred, y = !! resp), alpha = 0.6,
                       position = position_jitter(width = jitter[1]),
-                      sides = rug.sides, inherit.aes = TRUE)
+                      sides = rug.sides, inherit.aes = TRUE, color = colors)
   }
   
   # Using theme_apa for theming...but using legend title and side positioning
@@ -512,13 +515,13 @@ plot_cat <- function(predictions, pred, data = NULL,
   }
   
   # Plot intervals if requested
-  if (interval == TRUE & interval.geom[1] == "errorbar") {
+  if (interval == TRUE && interval.geom[1] == "errorbar") {
     p <- p + geom_errorbar(aes(ymin = !! sym("ymin"), ymax = !! sym("ymax")),
                            alpha = 1, show.legend = FALSE,
                            position = position_dodge(dodge.width),
                            width = errorbar.width,
                            size = line.thickness, color = colors)
-  } else if (interval == TRUE & interval.geom[1] %in% c("line", "linerange")) {
+  } else if (interval == TRUE && interval.geom[1] %in% c("line", "linerange")) {
     p <- p + geom_linerange(aes(ymin = !! sym("ymin"), ymax = !! sym("ymax")),
                             alpha = 0.8, show.legend = FALSE,
                             position = position_dodge(dodge.width),

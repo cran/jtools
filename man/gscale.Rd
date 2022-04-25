@@ -8,7 +8,7 @@ gscale(
   data = NULL,
   vars = NULL,
   binary.inputs = "center",
-  binary.factors = TRUE,
+  binary.factors = FALSE,
   n.sd = 2,
   center.only = FALSE,
   scale.only = FALSE,
@@ -33,7 +33,7 @@ as 0.5; \code{center} subtracts the mean; and \code{full} subtracts the
 mean and divides by 2 sd.}
 
 \item{binary.factors}{Coerce two-level factors to numeric and apply scaling
-functions to them? Default is TRUE.}
+functions to them? Default is FALSE.}
 
 \item{n.sd}{By how many standard deviations should the variables be divided
 by? Default for \code{gscale} is 2, like \code{arm}'s \code{rescale}.
@@ -170,6 +170,6 @@ Other standardization:
 \code{\link{standardize}()}
 }
 \author{
-Jacob Long <\email{long.1377@osu.edu}>
+Jacob Long \email{jacob.long@sc.edu}
 }
 \concept{standardization}

@@ -36,7 +36,9 @@
 #'   also moved to 1 instead of 0.
 #' @param point.shape When using multiple models, should each model's point
 #'   estimates use a different point shape to visually differentiate each
-#'   model from the others? Default is TRUE.
+#'   model from the others? Default is TRUE. You may also pass a vector of
+#'   shapes to specify shapes yourself.
+#' @param point.size Change the size of the points. Default is 3.
 #' @param legend.title What should the title for the legend be? Default is
 #'   "Model", but you can specify it here since it is rather difficult to
 #'   change later via `ggplot2`'s typical methods.
@@ -110,7 +112,8 @@ plot_summs <- function(..., ci_level = .95, model.names = NULL, coefs = NULL,
                        omit.coefs = "(Intercept)", inner_ci_level = NULL,
                        colors = "CUD Bright", plot.distributions = FALSE,
                        rescale.distributions = FALSE, exp = FALSE,
-                       point.shape = TRUE, legend.title = "Model",
+                       point.shape = TRUE, point.size = 3, 
+                       legend.title = "Model",
                        groups = NULL, facet.rows = NULL, facet.cols = NULL,
                        facet.label.pos = "top", color.class = colors, 
                        resp = NULL, dpar = NULL) {
@@ -139,8 +142,9 @@ plot_summs <- function(..., ci_level = .95, model.names = NULL, coefs = NULL,
                     inner_ci_level = inner_ci_level, colors = list(colors),
                     plot.distributions = plot.distributions,
                     rescale.distributions = rescale.distributions, exp = exp,
-                    point.shape = point.shape, legend.title = legend.title,
-                    groups = groups, facet.rows = facet.rows,
+                    point.shape = list(point.shape), point.size = point.size, 
+                    legend.title = legend.title,
+                    groups = list(groups), facet.rows = facet.rows,
                     facet.cols = facet.cols, facet.label.pos = facet.label.pos, 
                     color.class = color.class, resp = resp, dpar = dpar,
                     ex_args))
@@ -159,7 +163,7 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
                        omit.coefs = c("(Intercept)", "Intercept"),
                        colors = "CUD Bright", plot.distributions = FALSE,
                        rescale.distributions = FALSE,
-                       exp = FALSE, point.shape = TRUE,
+                       exp = FALSE, point.shape = TRUE, point.size = 3,
                        legend.title = "Model", groups = NULL,
                        facet.rows = NULL, facet.cols = NULL,
                        facet.label.pos = "top", color.class = colors,
@@ -184,7 +188,7 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
   # If first element of list is a list, assume the list is a list of models
   if (inherits(dots[[1]], 'list')) {
     mods <- dots[[1]]
-    if (is.null(model.names) & !is.null(names(mods))) {
+    if (is.null(model.names) && !is.null(names(mods))) {
       if (is.null(model.names)) model.names <- names(mods)
     }
     if (length(dots) > 1) {
@@ -215,7 +219,7 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
     ex_args <- NULL
   }
   
-  if (!is.null(omit.coefs) & !is.null(coefs)) {
+  if (!is.null(omit.coefs) && !is.null(coefs)) {
     if (any(omit.coefs %nin% c("(Intercept)", "Intercept"))) {
       msg_wrap("coefs argument overrides omit.coefs argument. Displaying
                coefficients listed in coefs argument.")
@@ -237,7 +241,7 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
   
   # Create more data for the inner interval
   if (!is.null(inner_ci_level)) {
-    if (plot.distributions == FALSE | n_models == 1) {
+    if (plot.distributions == FALSE || n_models == 1) {
       tidies_inner <- make_tidies(mods = mods, ex_args = ex_args,
                                   ci_level = inner_ci_level,
                                   model.names = model.names,
@@ -288,7 +292,7 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
                                  xmax = conf.high, colour = model))
   
   if (!is.null(groups)) {
-    if (is.null(facet.rows) & is.null(facet.cols)) {
+    if (is.null(facet.rows) && is.null(facet.cols)) {
       facet.cols <- 1
     }
     p <- p + facet_wrap(group ~ ., nrow = facet.rows, ncol = facet.cols,
@@ -296,7 +300,7 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
   }
   
   # Checking if user provided the colors his/herself
-  if (length(colors) == 1 | length(colors) != n_models) {
+  if (length(colors) == 1 || length(colors) != n_models) {
     colors <- get_colors(colors, n_models)
   } else {
     colors <- colors
@@ -307,7 +311,7 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
   # Plot distribution layer first so it is beneath the pointrange
   if (plot.distributions == TRUE) {
     # Helper function to generate data for geom_polygon
-    dist_curves <- get_dist_curves(tidies, order = rev(levels(tidies$term)),
+    dist_curves <- get_dist_curves(tidies, order = levels(tidies$term),
                                    models = levels(tidies$model),
                                    rescale.distributions = rescale.distributions)
     # Draw the distributions
@@ -333,27 +337,37 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
   # If there are overlapping distributions, the overlapping pointranges
   # are confusing and look bad. If plotting distributions with more than one
   # model, just plot the points with no ranges.
-  if (plot.distributions == FALSE | n_models == 1) {
+  if (plot.distributions == FALSE || n_models == 1) {
     # Plot the pointranges
     p <- p + ggstance::geom_pointrangeh(
       aes(y = term, x = estimate, xmin = conf.low,
           xmax = conf.high, colour = model, shape = model),
       position = ggstance::position_dodgev(height = dh),
-      fill = "white", fatten = 3, size = 0.8,
+      fill = "white", fatten = point.size, size = 0.8,
       show.legend = length(mods) > 1) # omit legend if just a single model
   } else {
     p <- p + geom_point(
       aes(y = term, x = estimate, colour = model, shape = model),
-      fill = "white", size = 3, stroke = 1, show.legend = TRUE)
+      fill = "white", size = point.size, stroke = 1, show.legend = TRUE)
   }
   
   # To set the shape aesthetic, I prefer the points that can be filled. But
   # there are only 6 such shapes, so I need to check how many models there are.
-  if (point.shape == TRUE) {
+  if (length(point.shape) == 1 && point.shape == TRUE) {
     oshapes <- c(21:25, 15:18, 3, 4, 8)
     shapes <- oshapes[seq_len(n_models)]
-  } else if (point.shape == FALSE) {
+  } else if (length(point.shape) == 1 && is.logical(point.shape[1]) &&
+             point.shape[1] == FALSE) {
     shapes <- rep(21, times = n_models)
+  } else {
+    if (length(point.shape) != n_models && length(point.shape) != 1) {
+      stop_wrap("You must provide the same number of point shapes as the
+                number of models.")
+    } else if (length(point.shape) == 1) {
+      shapes <- rep(point.shape, times = n_models)
+    } else {
+      shapes <- point.shape
+    }
   }
   
   p <- p +
@@ -376,12 +390,12 @@ plot_coefs <- function(..., ci_level = .95, inner_ci_level = NULL,
   # of plotting area so I need to set manually
   if (plot.distributions == TRUE) {
     
-    p <- p + scale_y_discrete(limits = rev(levels(tidies$term)),
+    p <- p + scale_y_discrete(limits = levels(tidies$term),
                               name = legend.title)
     
     yrange <- ggplot_build(p)$layout$panel_params[[1]]$y.range
     xrange <- ggplot_build(p)$layout$panel_params[[1]]$x.range
-    if (is.null(yrange) & is.null(xrange)) { # ggplot 2.2.x compatibility
+    if (is.null(yrange) && is.null(xrange)) { # ggplot 2.2.x compatibility
       yrange <- ggplot_build(p)$layout$panel_ranges[[1]]$y.range
       xrange <- ggplot_build(p)$layout$panel_ranges[[1]]$x.range
     }
@@ -415,7 +429,7 @@ make_tidies <- function(mods, ex_args, ci_level, model.names, omit.coefs,
     
     mv_fits <- sapply(mods, function(x) "mvbrmsformula" %in% class(formula(x)))
     if (any(mv_fits)) {
-      if (!is.null(resp) & length(resp) %nin% c(sum(mv_fits), 1)) {
+      if (!is.null(resp) && length(resp) %nin% c(sum(mv_fits), 1)) {
         stop_wrap("The length of the `resp` argument must be either equal to
                   the number of multivariate `brmsfit` objects or 1.")
       } else if (is.null(resp)) { # Need to retrieve first DV
@@ -479,35 +493,33 @@ make_tidies <- function(mods, ex_args, ci_level, model.names, omit.coefs,
       method_args <-
         method_args[names(method_args) %nin% c("intervals", "prob")]
       
-      if (method_stub == "brmsfit" & "par_type" %nin% ex_args) {
+      if (method_stub == "brmsfit" && "par_type" %nin% ex_args) {
         ex_args <- c(ex_args, par_type = "non-varying", effects = "fixed")
       } 
       
       extra_args <- ex_args[names(ex_args) %in% names(method_args)]
       
-    } else if (method_stub == "brmsfit" & is.null(ex_args)) {
-      extra_args <- list(par_type = "non-varying", effects = "fixed")
+    } else if (method_stub == "brmsfit" && is.null(ex_args)) {
+      extra_args <- list(effects = "fixed")
     } else {
       extra_args <- NULL
     }
     
     all_args <- as.list(c(x = list(mods[[i]]), conf.int = TRUE,
-                          conf.level = ci_level,
-                          intervals = TRUE, prob = ci_level,
-                          extra_args))
+                          conf.level = ci_level, extra_args))
     
     tidies[[i]] <- do.call(generics::tidy, args = all_args)
-    if (!is.null(names(mods)) & any(names(mods) != "")) {
+    if (!is.null(names(mods)) && any(names(mods) != "")) {
       tidies[[i]]$model <- names(mods)[i]
     } else {
       modname <- paste("Model", i)
       tidies[[i]]$model <- modname
     }
     # Deal with glht with no `term` column
-    if ("term" %nin% names(tidies[[i]]) & "lhs" %in% names(tidies[[i]])) {
+    if ("term" %nin% names(tidies[[i]]) && "lhs" %in% names(tidies[[i]])) {
       tidies[[i]]$term <- tidies[[i]]$lhs
     }
-    if ("brmsfit" %in% class(mods[[i]]) & (!is.null(resps) | !is.null(dpars))) {
+    if ("brmsfit" %in% class(mods[[i]]) && (!is.null(resps) || !is.null(dpars))) {
       # See if we're selecting a DV in a multivariate model
       if (!is.null(resps) && !is.na(resps[[i]])) {
         # Now see if we're also dealing with a distributional outcome
@@ -582,7 +594,7 @@ make_tidies <- function(mods, ex_args, ci_level, model.names, omit.coefs,
   tidies$term <- factor(tidies$term, levels = rev(coefs),
                         labels = rev(names(coefs)))
   
-  if (all(c("upper", "lower") %in% names(tidies)) &
+  if (all(c("upper", "lower") %in% names(tidies)) &&
       "conf.high" %nin% names(tidies)) {
     tidies$conf.high <- tidies$upper
     tidies$conf.low <- tidies$lower
@@ -635,7 +647,7 @@ get_dist_curves <- function(tidies, order, models, rescale.distributions) {
              consider rescaling your model coefficients or using the
              rescale.distributions = TRUE argument.")
   }
-  
+
   for (i in seq_along(means)) {
     
     if (rescale.distributions == FALSE) {
@@ -643,7 +655,8 @@ get_dist_curves <- function(tidies, order, models, rescale.distributions) {
     } else {
       multiplier <- .6 / heights[i]
     }
-    
+    # I need to know where to put this on the y-axis *numerically* since
+    # geom_polygon isn't going to know about the terms on the y-axis.
     y_pos <- which(order == term_names[i])
     this_curve <- cfs[[i]]$curve
     this_curve <- (this_curve * multiplier) + y_pos

@@ -11,11 +11,11 @@ make_predictions <- function(model, ...) {
 prepare_return_data <- function(model, data, return.orig.data, 
                                 partial.residuals, pm, pred, at, 
                                 center, set.offset, formula = NULL, ...) {
-  if (return.orig.data == FALSE & partial.residuals == FALSE) {
+  if (return.orig.data == FALSE && partial.residuals == FALSE) {
     o <- tibble::as_tibble(pm)
   } else {
     if (is.null(formula)) {formula <- get_formula(model)}
-    if (return.orig.data == TRUE & partial.residuals == FALSE) {
+    if (return.orig.data == TRUE && partial.residuals == FALSE) {
       o <- list(predictions = tibble::as_tibble(pm), data = 
                 suppressMessages(d <- get_data(model, formula = formula)))
       if ("is_dpar" %in% names(attributes(formula))) {return(o)}
@@ -23,11 +23,14 @@ prepare_return_data <- function(model, data, return.orig.data,
       # If left-hand side is transformed, make new column in original data for
       # the transformed version and evaluate it
       if (is_lhs_transformed(formula)) {
-        o[[2]][resp] <- eval(get_lhs(formula), o[[2]])
+        if (!check_two_col(model)) {
+          o[[2]][[resp]] <- eval(get_lhs(formula), o[[2]])
+        } 
       }
       # For binomial family, character/logical DVs can cause problems
-      if (get_family(model, ...)$family == "binomial" &  !is.numeric(d[[resp]])) {
-        if (is.logical(d[[resp]])) {
+      if (get_family(model, ...)$family == "binomial" &&
+          !is.numeric(o[[2]][[resp]]) && !check_two_col(model)) {
+        if (is.logical(o[[2]][[resp]])) {
           o[[2]][[resp]] <- as.numeric(o[[2]][[resp]])
         } else {
           o[[2]][[resp]] <- 
@@ -149,7 +152,7 @@ make_predictions.default <- function(model, pred, pred.values = NULL, at = NULL,
   } else {pm <- new_data}
   
   
-  link_or_lm <- ifelse(family(model)$link == "identity",
+  link_or_lm <- ifelse(get_family(model)$link == "identity",
                        yes = "response", no = "link")
   
   # Do the predictions using built-in prediction method if robust is FALSE
@@ -189,9 +192,18 @@ make_predictions.default <- function(model, pred, pred.values = NULL, at = NULL,
   }
   
   # See minimum and maximum values for plotting intervals
-  if (interval == TRUE) { # only create SE columns if intervals are needed
-    pm[["ymax"]] <- pm[[get_response_name(model)]] + (predicted[["se.fit"]]) * ses
-    pm[["ymin"]] <- pm[[get_response_name(model)]] - (predicted[["se.fit"]]) * ses
+  if (interval == TRUE) { # only create SE columns if intervals are requested
+    if ("fit.lwr" %nin% names(predicted)) { # Okay this is funky but...
+      if (int.type[1] == "prediction") {
+        stop_wrap("R does not compute prediction intervals for this kind of
+                  model.")
+      }
+      pm[["ymax"]] <- pm[[get_response_name(model)]] + (predicted[["se.fit"]]) * ses
+      pm[["ymin"]] <- pm[[get_response_name(model)]] - (predicted[["se.fit"]]) * ses
+    } else {
+      pm[["ymin"]] <- predicted[["fit.lwr"]]
+      pm[["ymax"]] <- predicted[["fit.upr"]]
+    }
   } else {
     # Do nothing
   }
@@ -199,10 +211,10 @@ make_predictions.default <- function(model, pred, pred.values = NULL, at = NULL,
   # Back-convert the predictions to the response scale
   if (outcome.scale == "response") {
     pm[[get_response_name(model)]] <-
-      family(model)$linkinv(pm[[get_response_name(model)]])
+      get_family(model)$linkinv(pm[[get_response_name(model)]])
     if (interval == TRUE) {
-      pm[["ymax"]] <- family(model)$linkinv(pm[["ymax"]])
-      pm[["ymin"]] <- family(model)$linkinv(pm[["ymin"]])
+      pm[["ymax"]] <- get_family(model)$linkinv(pm[["ymax"]])
+      pm[["ymin"]] <- get_family(model)$linkinv(pm[["ymin"]])
     }
   }
   
@@ -314,7 +326,7 @@ make_predictions.merMod <- function(model, pred, pred.values = NULL, at = NULL,
   }
   
   # Do the predictions using built-in prediction method if robust is FALSE
-  if (interval == FALSE & is.null(model.offset(model.frame(model)))) {
+  if (interval == FALSE && is.null(model.offset(model.frame(model)))) {
     predicted <- as.data.frame(predict(model, newdata = pm,
                                        type = link_or_lm,
                                        re.form = re.form,
@@ -324,7 +336,7 @@ make_predictions.merMod <- function(model, pred, pred.values = NULL, at = NULL,
     
   } else { # Use my custom predictions function
     
-    if (interactive() & boot == TRUE & progress != "none") {
+    if (interactive() && boot == TRUE && progress != "none") {
       cat("Bootstrap progress:\n")
     }
     predicted <- predict_mer(model, newdata = pm, use_re_var = add.re.variance,

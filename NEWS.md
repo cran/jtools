@@ -1,3 +1,58 @@
+# jtools 2.2.0
+
+Accuracy bug fixes:
+
+* `pf_sv_test()` was calculating standard errors 
+incorrectly in previous versions of `jtools`. This has been corrected. Thanks
+to Rebecca Andridge for noticing this. (#89)
+* `wtd.sd()` now gives correct results when data is missing in `x` but not in
+the weights. Thanks to Klaus Langohr for reporting the issue.
+
+Other bug fixes:
+
+* `make_predictions()` no longer ignores `int.type`. (#116)
+* `scale_mod()`/`center_mod()`, as well as `summ()`'s `scale` feature, no longer
+error when the left-hand side of the model formula contains a transformation.
+(#101)
+* `make_predictions()` (and therefore `effect_plot()`) correctly transforms 
+original data when the left-hand side of the formula includes a transformation.
+* Pseudo-R^2 calculations now work when `family` is given as a string to the 
+`glm()` function. (#92)
+* Facetting now works in `plot_summs()` as it always had in `plot_coefs()`. (#88)
+* `effect_plot()` now recognizes color palettes provided to the `colors`
+argument (although you will only get the first color of each palette). Thanks
+to Jed Brodie for the report.
+* `effect_plot()` now applies the color specified in `color` to the points and
+intervals. This deprecates the `point.color` argument which is now ignored with
+a warning. There was previously no means by which users could change the 
+color of the intervals. Thanks again to Jed Brodie for the report.
+* `%just%.list`() now returns an output.
+* `scale_mod()` now works on `svyglm` models with offsets.
+
+Enhancements:
+
+* `plot_coefs()` and `plot_summs()` now allow you to change the size of the 
+points using the `point.size` argument. (#61, #120)
+* `summ()` now has a `scale.only` argument for supported models, allowing you
+to scale continuous variables without mean-centering them. (#104)
+* `effect_plot()` and `make_predictions()` now handle binomial GLMs with a
+two-column response variable. (#100)
+* Users may now choose their own points in `plot_coefs()` and `plot_summs()`
+by passing a vector of shapes to the `point.shape` argument. (#71)
+
+Miscellaneous changes:
+
+* `gscale()` (and therefore `scale_mod()` and `center_mod()`) no longer convert
+binary factor variables to numeric variables by default. This behavior can be
+requested by setting `binary.factor = TRUE`. (#114)
+* `summ()` no longer silently ignores the `cluster` argument when `robust` is
+set to `FALSE`. (#93)
+* `plot_summs()` and `plot_coefs()` no longer reverse the typical order of the
+coefficients on the y-axis when `plot.distributions = TRUE`.
+* Vignettes have been spruced up a little bit, especially the "Tools for 
+summarizing and visualizing regression models" one, which has received some 
+new examples using the `movies` dataset.
+
 # jtools 2.1.4
 
 * Fixed a test error.

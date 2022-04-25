@@ -4,17 +4,16 @@
 \alias{get_formula}
 \alias{get_formula.default}
 \alias{get_formula.brmsfit}
-\title{Retrieve formulas from model objects
-
-This function is primarily an internal helper function in \code{jtools} and
-related packages to standardize the different types of formula objects used
-by different types of models.}
+\alias{get_formula.panelmodel}
+\title{Retrieve formulas from model objects}
 \usage{
 get_formula(model, ...)
 
 \method{get_formula}{default}(model, ...)
 
 \method{get_formula}{brmsfit}(model, resp = NULL, dpar = NULL, ...)
+
+\method{get_formula}{panelmodel}(model, ...)
 }
 \arguments{
 \item{model}{The fitted model object.}
@@ -32,9 +31,10 @@ If there are multiple responses with distributional parameters, then
 \code{resp} should be specified or else the first formula will be used by
 default.}
 }
+\value{
+A \code{formula} object.
+}
 \description{
-Retrieve formulas from model objects
-
 This function is primarily an internal helper function in \code{jtools} and
 related packages to standardize the different types of formula objects used
 by different types of models.
