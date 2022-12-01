@@ -1,3 +1,23 @@
+# jtools 2.2.1
+
+Important accuracy bug fix:
+
+* The `robust` argument from `summ()`, when getting results for `glm` models
+only, was not returning robust standard errors. This has been corrected. Thanks
+to Javier Mariani for noticing the issue.
+
+Other changes:
+
+* Minor change to `stop_wrap()` to make its error messages include a more 
+useful "from" message. Rather than "Error in stop_wrap()", it will include the
+actual function in which the error occurred.
+* The DESCRIPTION file in jtools 2.2.0 wrongly defined the minimum version of 
+R to use this package as R "3.50." It should have been R 3.5.0 and now reflects
+that it should work on versions of R greater than or equal to 3.5.0. (#126)
+* The `effect_plot()` function now accepts the argument `line.colors` to allow
+users to request different colors for the line/interval and plotted points. 
+* Removed the soft dependency on the `ggstance` package.
+
 # jtools 2.2.0
 
 Accuracy bug fixes:

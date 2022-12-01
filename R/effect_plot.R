@@ -85,7 +85,12 @@
 #'
 #' @param colors See [jtools_colors] for details on the types of arguments
 #'    accepted. Default is "black". This affects the coloration of the line
-#'    as well as confidence intervals and points.
+#'    as well as confidence intervals and points unless you give a different 
+#'    argument to `line.color`.
+#' 
+#' @param line.colors See [jtools_colors] for details on the types of arguments
+#'    accepted. Default is `colors`. This affects the coloration of the line
+#'    as well as confidence intervals, but not the points.
 #' 
 #' @param color.class Deprecated. Now known as `colors`.
 #'
@@ -249,7 +254,8 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
   int.type = c("confidence","prediction"), int.width = .95,
   outcome.scale = "response", robust = FALSE, cluster = NULL, vcov = NULL, 
   set.offset = 1, x.label = NULL, y.label = NULL, pred.labels = NULL,
-  main.title = NULL, colors = "black", line.thickness = 1.1, 
+  main.title = NULL, colors = "black", line.colors = colors, 
+  line.thickness = 1.1, 
   point.size = 1.5, point.alpha = 0.6, jitter = 0, rug = FALSE, 
   rug.sides = "lb", force.cat = FALSE, cat.geom = c("point", "line", "bar"), 
   cat.interval.geom = c("errorbar", "linerange"), cat.pred.point.size = 3.5, 
@@ -306,7 +312,7 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
                            interval = interval,
                            data = d, x.label = x.label, y.label = y.label,
                            pred.labels = pred.labels, main.title = main.title,
-                           colors = colors,
+                           colors = line.colors,
                            line.thickness = line.thickness, jitter = jitter,
                            resp = get_response_name(model, ...),
                            weights = get_weights(model, d)$weights_name,
@@ -319,7 +325,7 @@ effect_plot <- function(model, pred, pred.values = NULL, centered = "all",
              interval = interval, plot.points = plot.points | partial.residuals,
              pred.labels = pred.labels, x.label = x.label,
              y.label = y.label, main.title = main.title,
-             colors = colors, weights = get_weights(model, d)$weights_name,
+             colors = line.colors, weights = get_weights(model, d)$weights_name,
              resp = get_response_name(model, ...), jitter = jitter, 
              interval.geom = cat.interval.geom, line.thickness = line.thickness,
              point.size = point.size, pred.point.size = cat.pred.point.size,
@@ -377,7 +383,7 @@ plot_effect_continuous <-
   }
   
   # Define line thickness
-  p <- p + geom_path(size = line.thickness, colour = colors)
+  p <- p + geom_path(linewidth = line.thickness, colour = colors)
   
   # Plot intervals if requested
   if (interval == TRUE) {
@@ -510,7 +516,7 @@ plot_cat <- function(predictions, pred, data = NULL,
   
   if (geom == "line") {
     p <- p + geom_path(position = position_dodge(dodge.width),
-                       size = line.thickness, show.legend = FALSE, 
+                       linewidth = line.thickness, show.legend = FALSE, 
                        color = colors)
   }
   
@@ -520,12 +526,12 @@ plot_cat <- function(predictions, pred, data = NULL,
                            alpha = 1, show.legend = FALSE,
                            position = position_dodge(dodge.width),
                            width = errorbar.width,
-                           size = line.thickness, color = colors)
+                           linewidth = line.thickness, color = colors)
   } else if (interval == TRUE && interval.geom[1] %in% c("line", "linerange")) {
     p <- p + geom_linerange(aes(ymin = !! sym("ymin"), ymax = !! sym("ymax")),
                             alpha = 0.8, show.legend = FALSE,
                             position = position_dodge(dodge.width),
-                            size = line.thickness, color = colors)
+                            linewidth = line.thickness, color = colors)
   }
   
   # For factor vars, plotting the observed points
