@@ -12,7 +12,7 @@
 #' @param error_format Which of standard error, confidence intervals, test
 #'   statistics, or p values should be used to express uncertainty of estimates
 #'   for regression coefficients? See details for more info.
-#'   Default: "({std.error})"
+#'   Default: `"({std.error})"`
 #' @param error_pos Where should the error statistic defined in
 #'   \code{error_style} be placed relative to the coefficient estimate?
 #'   Default: "below"
@@ -150,13 +150,7 @@ export_summs <- function(...,
                          to.file = NULL,
                          file.name = NULL) {
 
-  if (!requireNamespace("huxtable", quietly = TRUE)) {
-    stop_wrap("Install the huxtable package to use the export_summs function.")
-  }
-
-  if (!requireNamespace("broom", quietly = TRUE)) {
-    stop_wrap("Install the broom package to use the export_summs function.")
-  }
+  rlang::check_installed("huxtable")
 
   # Capture arguments
   dots <- list(...)
@@ -361,12 +355,7 @@ export_summs <- function(...,
 }
 
 #' @rdname glance.summ
-#' @rawNamespace 
-#' if (getRversion() >= "3.6.0") {
-#'  S3method(generics::tidy, summ)
-#' } else {
-#'  export(tidy.summ)
-#' }
+#' @export
 
 tidy.summ <- function(x, conf.int = FALSE, conf.level = .95, ...) {
 
@@ -477,12 +466,7 @@ tidy.summ <- function(x, conf.int = FALSE, conf.level = .95, ...) {
 }
 
 #' @rdname glance.summ
-#' @rawNamespace 
-#' if (getRversion() >= "3.6.0") {
-#'  S3method(generics::tidy, summ.merMod)
-#' } else {
-#'  export(tidy.summ.merMod)
-#' }
+#' @export
 
 tidy.summ.merMod <- function(x, conf.int = FALSE, conf.level = .95, ...) {
 
@@ -586,31 +570,7 @@ tidy.summ.merMod <- function(x, conf.int = FALSE, conf.level = .95, ...) {
 #'  \code{\link[generics]{glance}}
 #'
 #' @rdname glance.summ
-#' @rawNamespace 
-#' if (getRversion() >= "3.6.0") {
-#'  S3method(generics::glance, summ.lm)
-#' } else {
-#'  export(glance.summ.lm)
-#' }
-#' 
-#' if (getRversion() >= "3.6.0") {
-#'  S3method(generics::glance, summ.glm)
-#' } else {
-#'  export(glance.summ.glm)
-#' }
-#' 
-#' if (getRversion() >= "3.6.0") {
-#'  S3method(generics::glance, summ.svyglm)
-#' } else {
-#'  export(glance.summ.svyglm)
-#' }
-#' 
-#' if (getRversion() >= "3.6.0") {
-#'  S3method(generics::glance, summ.merMod)
-#' } else {
-#'  export(glance.summ.merMod)
-#' }
-
+#' @export
 
 glance.summ.lm <- function(x, ...) {
 
