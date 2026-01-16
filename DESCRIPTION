@@ -1,7 +1,7 @@
 Package: jtools
 Type: Package
 Title: Analysis and Presentation of Social Scientific Data
-Version: 2.3.0
+Version: 2.3.1
 Authors@R: person(c("Jacob","A."), "Long", email = "jacob.long@sc.edu",
   role = c("aut", "cre"), comment = c(ORCID = "0000-0002-1582-6214"))
 Description: This is a collection of tools for more efficiently understanding 
@@ -24,8 +24,9 @@ RoxygenNote: 7.3.2
 VignetteBuilder: knitr
 Depends: R (>= 3.6.0)
 NeedsCompilation: no
-Packaged: 2024-08-25 12:53:18 UTC; jacoblong
-Author: Jacob A. Long [aut, cre] (<https://orcid.org/0000-0002-1582-6214>)
+Packaged: 2026-01-15 21:38:31 UTC; jacoblong
+Author: Jacob A. Long [aut, cre] (ORCID:
+    <https://orcid.org/0000-0002-1582-6214>)
 Maintainer: Jacob A. Long <jacob.long@sc.edu>
 Repository: CRAN
-Date/Publication: 2024-08-25 13:20:02 UTC
+Date/Publication: 2026-01-16 09:10:31 UTC

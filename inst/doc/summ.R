@@ -80,21 +80,21 @@ plot_summs(fit, fit, fit, robust = list(FALSE, "HC0", "HC5"),
            model.names = c("OLS", "HC0", "HC5"))
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  export_summs(fit, fit2, scale = TRUE)
+# export_summs(fit, fit2, scale = TRUE)
 
 ## ----echo = FALSE, results = 'asis'-------------------------------------------
 huxtable::print_html(export_summs(fit, fit2, scale = TRUE))
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  export_summs(fit, fit2, scale = TRUE,
-#               error_format = "[{conf.low}, {conf.high}]")
+# export_summs(fit, fit2, scale = TRUE,
+#              error_format = "[{conf.low}, {conf.high}]")
 
 ## ----echo = FALSE, results = 'asis'-------------------------------------------
 huxtable::print_html(export_summs(fit, fit2, scale = TRUE,
                      error_format = "[{conf.low}, {conf.high}]"))
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  export_summs(fit, fit2, scale = TRUE, to.file = "docx", file.name = "test.docx")
+# export_summs(fit, fit2, scale = TRUE, to.file = "docx", file.name = "test.docx")
 
 ## -----------------------------------------------------------------------------
 summ(fit, model.info = FALSE, model.fit = FALSE)
@@ -118,7 +118,7 @@ j <- summ(fit, digits = 3)
 j$coeftable
 
 ## ----eval = F-----------------------------------------------------------------
-#  set_summ_defaults(digits = 2, pvals = FALSE, robust = "HC3")
+# set_summ_defaults(digits = 2, pvals = FALSE, robust = "HC3")
 
 ## -----------------------------------------------------------------------------
 summ(fit, vifs = TRUE)
