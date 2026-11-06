@@ -1,7 +1,7 @@
 Package: jtools
 Type: Package
 Title: Analysis and Presentation of Social Scientific Data
-Version: 2.3.1
+Version: 2.3.2
 Authors@R: person(c("Jacob","A."), "Long", email = "jacob.long@sc.edu",
   role = c("aut", "cre"), comment = c(ORCID = "0000-0002-1582-6214"))
 Description: This is a collection of tools for more efficiently understanding 
@@ -15,18 +15,19 @@ License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: cli, generics, broom, broom.mixed, ggplot2 (>= 3.4.0),
-        magrittr, pander, pkgconfig, rlang, sandwich, tibble
-Suggests: boot, huxtable, kableExtra, lme4, lmerTest, MASS, methods,
-        pbkrtest, RColorBrewer, scales, survey, weights, knitr,
-        rmarkdown, testthat, vdiffr
+        magrittr, pander, pkgconfig, rlang, reformulas (>= 0.4.2),
+        sandwich, tibble
+Suggests: boot, Formula, huxtable, kableExtra, lme4, lmerTest (>=
+        3.2-1), MASS, methods, pbkrtest, RColorBrewer, scales, survey,
+        weights, knitr, rmarkdown, testthat, vdiffr, xml2
 Enhances: brms, quantreg, rstanarm
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
 Depends: R (>= 3.6.0)
 NeedsCompilation: no
-Packaged: 2026-01-15 21:38:31 UTC; jacoblong
+Packaged: 2026-11-06 17:41:10 UTC; jacoblong
 Author: Jacob A. Long [aut, cre] (ORCID:
     <https://orcid.org/0000-0002-1582-6214>)
 Maintainer: Jacob A. Long <jacob.long@sc.edu>
 Repository: CRAN
-Date/Publication: 2026-01-16 09:10:31 UTC
+Date/Publication: 2026-11-06 20:00:09 UTC
